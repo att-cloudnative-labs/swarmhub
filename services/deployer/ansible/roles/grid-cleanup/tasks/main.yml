@@ -1,0 +1,40 @@
+---
+- name: include region specific variables
+  include_vars: "{{ region }}.yml"
+
+- ec2_instance_facts:
+    region: "{{ region }}"
+    filters:
+      "tag:Grid": "{{ tag_grid }}"
+  register: ec2
+
+# Stop locust instances, if running
+- name: stop the locust slave
+  systemd:
+    name: locust-slave-{{ item }}
+    state: stopped
+  become: yes
+  when: "'locust.slave' in group_names"
+  with_sequence: count={{ ansible_processor_vcpus }}
+  ignore_errors: yes
+
+
+# If custom requirements were installed, have register additional_requirements be true
+- name: Check if requirements.txt exists
+  stat: 
+    path: /opt/python/locust/requirements.txt
+  register: additional_requirements
+
+# Delete Python virtual environment if custom requirements were installed
+- name: Delete the previous python environment
+  command: rm -rf /opt/python/venv
+  when: additional_requirements.stat.exists == True
+
+# Copy Python original virtual environment if custom requirements were installed
+- name: Copy over the original python environment
+  command: cp -r /opt/python/venv-orig /opt/python/venv
+  when: additional_requirements.stat.exists == True
+
+# Delete all locust files
+- name: Delete locust files
+  command: rm -rf /opt/python/locust/*

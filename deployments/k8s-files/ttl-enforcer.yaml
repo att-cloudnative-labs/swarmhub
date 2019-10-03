@@ -1,0 +1,32 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ttl-enforcer
+  labels:
+    app: ttl-enforcer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ttl-enforcer
+  template:
+    metadata:
+      labels:
+        app: ttl-enforcer
+    spec:
+      containers:
+      - name: ttl-enforcer
+        image: #build an image and put here
+        imagePullPolicy: Always
+        env:
+          - name: AWS_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: cloud-credentials
+                key: aws_access_key
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: cloud-credentials
+                key: aws_secret_access_key

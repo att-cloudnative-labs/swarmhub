@@ -1,0 +1,188 @@
+{{ define "body" }}
+    <section class="section">
+      <div class="tile is-ancestor">
+        <div class="tile is-7 is-vertical is-parent">
+          <div class="tile is-child box">
+            <div class="level">
+              <div class="level-left">
+                <a class="button is-info title is-5" @click="isCreateGridModalActive = true; getGridProviders();">Create Grid</a>
+              </div>
+            </div>
+            <div class="box">
+              <div class="table-container">
+                <table class="table is-hoverable" style="width:100%" >
+                  <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Provider</th>
+                    <th>Region</th>
+                    <th>Master Type</th>
+                    <th>Slave Type</th>
+                    <th>Slave Nodes</th>
+                    <th>TTL</th>
+                  </tr>
+                  <tr v-for="grid in listOfGrids" v-bind:class="{ 'is-selected': data.ID==grid.ID }" @click="loadGridData(grid.ID)"> 
+                    <td>{( grid.Name )}</td>
+                    <td>{( grid.Status )}</td>
+                    <td>{( grid.Provider )}</td>
+                    <td>{( grid.Region )}</td>
+                    <td>{( grid.Master )}</td>
+                    <td>{( grid.Slave )}</td>
+                    <td>{( grid.Nodes )}</td>
+                    <td>{( grid.TTL )}
+                  </tr>
+                </table> 
+              </div>
+            </div>
+            <nav class="pagination" role="navigation" aria-label="pagination">
+              <a class="pagination-previous">Previous</a>
+              <a class="pagination-next">Next page</a>
+              <ul class="pagination-list">
+                <li>
+                  <a class="pagination-link is-current" aria-label="Goto page 1" aria-current="page" class="is-selected">1</a>
+                </li>
+                <li>
+                  <a class="pagination-link" aria-label="Goto page 2" aria-current="page">2</a>
+                </li>
+                <li>
+                  <a class="pagination-link" aria-label="Goto page 3">3</a>
+                </li>
+              </ul>
+            </nav>
+          </div> 
+          </div>
+          <div class="tile is-parent">
+            <template v-if="data">
+            <div class="tile is-child box">
+              <h1 class="title">{( data.Name )}</h1>
+              <p class="subtitle is-6"><a class="button is-small is-rounded is-danger" @click="isDeleteGridModalActive = true;">delete</a></p>
+              <div class="block">
+                <p class="header is-6">Status: {( data.Status )} (<a @click="isShowLogsModalActive = true; getLogs(data.ID);">show logs</a>)</p>
+                <p class="header is-6">Created: {( data.Created )}</p>
+              </div>
+              <div class="gridDetails">
+                <div class="block">
+                  <p>{( data.Desc )}</p>
+                </div> 
+              </div>
+            <div class="block">
+              <form :action="'/api/grid/' + data.ID + '/start'" method="post">
+                <input type="submit" class="button is-link" value="Launch">
+                </label>
+              </form>
+            </div>
+            </template>
+            <template v-else>
+              <div class="tile is-child box">
+                <h1 class="title">No grids selected</h1>
+              </div>
+            </template>  
+          </div>
+        </div>
+    </section>
+
+    <div class="modal" v-bind:class="{ 'is-active': isDeleteGridModalActive }">
+      <div class="modal-background"></div>
+      <div class="modal-content">
+        <div class="box">
+          <p>Are you sure you want to delete {( data.Name )}?</p>
+          <button class="button is-danger" @click="isDeleteGridModalActive = false; deleteGrid(data.ID);">Delete</button>
+          <button class="button" @click="isDeleteGridModalActive = false;">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" v-bind:class="{ 'is-active': isCreateGridModalActive}">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Create Grid</p>
+            <button class="delete" aria-label="close" @click="isCreateGridModalActive = false; clearGridSelection();"></button>
+          </header>
+          <section class="modal-card-body">
+            <div class="field">
+              <label class="label">Name</label>
+              <div class="control">
+                <input class="input" v-model="createGridData.Name" type="text" placeholder="Name of the Grid">
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">Provider</label>
+              <div class="control">
+                <div class="select">
+                  <select v-model="createGridData.Provider" @change="getProviderInfo(createGridData.Provider);">
+                    <option :value="undefined" disabled style="display:none">Select Provider</option>
+                    <option  v-for="provider in gridOptions.Provider" :value="provider">{(provider)}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">Region</label>
+              <div class="control">
+                <div class="select">
+                  <select v-bind:disabled="!createGridData.Provider" v-model="createGridData.Region" @change="getRegionInfo(createGridData.Provider, createGridData.Region);">
+                    <option :value="undefined" disabled style="display:none">Select Region</option>
+                    <option v-for="region in gridOptions.Region" :value="region">{(region)}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">Master Instance Type</label>
+              <div class="control">
+                <div class="select">
+                  <select v-bind:disabled="!createGridData.Region" v-model="createGridData.MasterType">
+                    <option :value="undefined" disabled style="display:none">Select Master Type</option>
+                    <option v-for="mastertype in gridOptions.MasterType" :value="mastertype">{(mastertype)}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">Slave Instance Type</label>
+              <div class="control">
+                <div class="select">
+                  <select v-bind:disabled="!createGridData.Region" v-model="createGridData.SlaveType">
+                    <option :value="undefined" disabled style="display:none">Select Slave Type</option>
+                    <option v-for="slavetype in gridOptions.SlaveType" :value="slavetype">{(slavetype)}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">Number of Slave Nodes</label>
+              <div class="control">
+                <input v-bind:disabled="!createGridData.SlaveType" v-model="createGridData.SlaveNodes" class="input" type="number" placeholder="Number of slaves">
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">TTL</label>
+              <div class="control">
+                <input v-model="createGridData.TTL" class="input" type="number" placeholder="Time in minutes until the grid is deleted.">
+              </div>
+            </div>
+          </section>
+          <footer class="modal-card-foot">
+            <button class="button is-success" @click="createGrid(); isCreateGridModalActive = false;">Save changes</button>
+            <button class="button" @click="isCreateGridModalActive = false; clearGridSelection();">Cancel</button>
+          </footer>
+        </div>
+    </div>
+    
+    <div class="modal" v-bind:class="{ 'is-active': isShowLogsModalActive}">
+      <div class="modal-background"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Logs for {(data.Name)} Status: {(logStatus)}</p>
+          <button class="delete" aria-label="close" @click="isShowLogsModalActive = false; stopGettingLogs()"></button>
+        </header>
+        <section class="modal-card-body">
+          <p v-for="log in logs">{(log.Output)}</p>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button" @click="isShowLogsModalActive = false; stopGettingLogs()">Close</button>
+        </footer>
+      </div>
+    </div>
+{{ end }}

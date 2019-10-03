@@ -1,0 +1,13 @@
+[Unit]
+Description=go-webserver
+After=network-online.target
+
+[Service]
+LimitNOFILE=500000
+LimitNPROC=500000
+ExecStart=/opt/python/venv/bin/locust --master --master-bind-port=9000
+WorkingDirectory=/opt/python/locust
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

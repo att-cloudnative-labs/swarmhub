@@ -1,0 +1,5 @@
+---
+AWS_REGIONS: ["us-west-1", "us-west-2", "us-east-1", "us-east-2"]
+SLEEP: 5m
+STAN_CLUSTER_ID: stan
+NATS_URL: nats.swarmhub.svc.cluster.local:4222

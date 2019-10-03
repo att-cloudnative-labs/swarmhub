@@ -1,0 +1,2 @@
+---
+ami: "{{ lookup('env', 'AWS_US_EAST_1_AMI')}}"

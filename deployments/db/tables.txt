@@ -1,0 +1,344 @@
+kubectl --namespace=swarmhub exec -it cockroachdb-0 -- /bin/bash
+./cockroach user set plt --insecure
+
+./cockroach sql --insecure
+
+DROP DATABASE portal CASCADE;
+
+SET CLUSTER SETTING timeseries.storage.resolution_10s.ttl = '170h0m0s';
+
+CREATE DATABASE portal;
+
+GRANT ALL ON DATABASE portal TO plt;
+
+CREATE TABLE portal.providers (
+    id SERIAL PRIMARY KEY,
+    name STRING
+);
+
+CREATE TABLE portal.labels (
+    id SERIAL PRIMARY KEY,
+    status STRING UNIQUE
+);
+
+CREATE TABLE portal.grid_status (
+    id SERIAL PRIMARY KEY,
+    status STRING
+);
+
+CREATE TABLE portal.grid_health (
+    id SERIAL PRIMARY KEY,
+    health STRING
+);
+
+CREATE TABLE portal.test_status (
+    id SERIAL PRIMARY KEY,
+    status STRING
+);
+
+CREATE TABLE portal.test_results (
+    id SERIAL PRIMARY KEY,
+    result STRING
+);
+
+CREATE TABLE portal.provider_regions (
+    provider SERIAL,
+    id SERIAL UNIQUE,
+    region STRING,
+    PRIMARY KEY (provider, id),
+    CONSTRAINT fk_customer FOREIGN KEY (provider) REFERENCES portal.providers
+   ) INTERLEAVE IN PARENT portal.providers (provider)
+;
+
+CREATE TABLE portal.region_vm_sizes (
+    provider SERIAL,
+    provider_region SERIAL,
+    id SERIAL UNIQUE,
+    name STRING,
+    size INT,
+    PRIMARY KEY (provider, provider_region, id),
+    CONSTRAINT fk_provider_region FOREIGN KEY (provider, provider_region) REFERENCES portal.provider_regions
+    ) INTERLEAVE IN PARENT portal.provider_regions (provider, provider_region)
+;
+
+CREATE TABLE portal.test_script_ids (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name string
+);
+
+CREATE TABLE portal.test ( 
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
+   name STRING NOT NULL, 
+   status_id INT REFERENCES portal.test_status,
+   result_id INT REFERENCES portal.test_results,
+   script_id UUID REFERENCES portal.test_script_ids,
+   description STRING NOT NULL, 
+   detailed_result STRING, 
+   start_automatically BOOL, 
+   created TIMESTAMP DEFAULT current_timestamp(), 
+   launched TIMESTAMP, 
+   stopped TIMESTAMP, 
+   grafana_snapshot_url STRING NOT NULL DEFAULT '',
+   grafana_snapshot_delete_url STRING NOT NULL DEFAULT '',
+   deleted BOOL DEFAULT false, 
+   created_by_user STRING NOT NULL, 
+   last_edited_user STRING NOT NULL, 
+   last_edited_time TIMESTAMP DEFAULT current_timestamp()
+);
+
+CREATE TABLE portal.tests_labels (
+    test_id UUID REFERENCES portal.test (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    label_id SERIAL REFERENCES portal.labels (id) ON UPDATE CASCADE,
+    CONSTRAINT test_label_id PRIMARY KEY (test_id, label_id)
+);
+
+CREATE TABLE portal.grid ( 
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   test_id UUID REFERENCES portal.test (id),
+   name STRING NOT NULL, 
+   status_id INT REFERENCES portal.grid_status (id),
+   health_id INT REFERENCES portal.grid_health (id),
+   created TIMESTAMP NOT NULL DEFAULT current_timestamp(),
+   expires TIMESTAMP,
+   ttl INT NOT NULL,
+   created_by_user STRING NOT NULL, 
+   last_edited_user STRING NOT NULL, 
+   last_edited_time TIMESTAMP DEFAULT current_timestamp(),
+   provider_id SERIAL REFERENCES portal.providers (id),
+   region_id SERIAL REFERENCES portal.provider_regions (id),
+   master_instance_type_id SERIAL REFERENCES portal.region_vm_sizes (id),
+   slave_instance_type_id SERIAL REFERENCES portal.region_vm_sizes (id),
+   nodes INT NOT NULL
+);
+
+ALTER TABLE portal.test ADD COLUMN grid_id UUID; 
+CREATE INDEX ON portal.test (grid_id);
+ALTER TABLE portal.test ADD CONSTRAINT grid_fk FOREIGN KEY (grid_id) REFERENCES portal.grid (id);
+
+CREATE TABLE portal.script_files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    filename STRING,
+    filesize INT,
+    last_modified TIMESTAMP,
+    last_edited_user STRING,
+    script_id UUID REFERENCES portal.test_script_ids (id) ON DELETE CASCADE,
+    UNIQUE (script_id, id)
+);
+
+CREATE TABLE portal.test_attachments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    filename STRING,
+    filesize INT,
+    last_modified TIMESTAMP,
+    last_edited_user STRING,
+    test_id UUID REFERENCES portal.test (id) ON DELETE CASCADE,
+    UNIQUE (test_id, filename)
+);
+
+INSERT INTO portal.test_status (status) VALUES ('Ready'), ('Creating'), ('Uploading'), ('Queued'), ('Expired'), ('Deploying'), ('Deployed'), ('Launching'), ('Launched'), ('Running'), ('Stopping'), ('Stopped'), ('Missing info'), ('Upload Failed'), ('Error'), ('Deleted');
+INSERT INTO portal.test_results (result) VALUES ('Pass'), ('Partial'), ('Fail');
+
+INSERT INTO portal.grid_status (status) VALUES ('Ready'), ('Available'), ('Error'), ('Deploying'), ('Deployed'), ('Stopping'), ('Stopped'), ('Cleaning'), ('Destroyed'), ('Expired'), ('Deleting'), ('Deleted');
+
+INSERT INTO portal.providers (name) VALUES ('AWS');
+
+INSERT INTO portal.provider_regions (provider, region) VALUES ((SELECT ID FROM portal.providers WHERE name='AWS'), 'us-west-1'), ((SELECT ID FROM portal.providers WHERE name='AWS'), 'us-west-2'), ((SELECT ID FROM portal.providers WHERE name='AWS'), 'us-east-1'),  ((SELECT ID FROM portal.providers WHERE name='AWS'), 'us-east-2');
+
+INSERT INTO portal.region_vm_sizes (provider, provider_region, name, size) VALUES
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 't2.micro', 1),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 't2.medium', 3),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 't2.large', 5),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 't2.xlarge', 7),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 't2.2xlarge', 9),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.large', 11),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.xlarge', 13),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.2xlarge', 15),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.4xlarge', 17),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.12xlarge', 19),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.24xlarge', 21),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.large', 23),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.xlarge', 25),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.2xlarge', 27),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.4xlarge', 29),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.9xlarge', 31),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.18xlarge', 33),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.large', 35),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.xlarge', 37),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.2xlarge', 39),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.4xlarge', 41),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.12xlarge', 43),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.24xlarge', 45),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.large', 47),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.xlarge', 49),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.2xlarge', 51),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.4xlarge', 53),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.8xlarge', 55),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.16xlarge', 57),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.large', 59),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.xlarge', 61),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.2xlarge', 63),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.4xlarge', 65),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.8xlarge', 67),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.large', 69),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.xlarge', 71),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.2xlarge', 73),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.4xlarge', 75),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.10xlarge', 77),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.16xlarge', 79),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 't2.micro', 1),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 't2.medium', 3),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 't2.large', 5),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 't2.xlarge', 7),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 't2.2xlarge', 9),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r5.large', 11),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r5.xlarge', 13),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r5.2xlarge', 15),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r5.4xlarge', 17),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r5.12xlarge', 19),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r5.24xlarge', 21),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c5.large', 23),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c5.xlarge', 25),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c5.2xlarge', 27),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c5.4xlarge', 29),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c5.9xlarge', 31),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c5.18xlarge', 33),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm5.large', 35),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm5.xlarge', 37),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm5.2xlarge', 39),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm5.4xlarge', 41),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm5.12xlarge', 43),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm5.24xlarge', 45),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r4.large', 47),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r4.xlarge', 49),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r4.2xlarge', 51),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r4.4xlarge', 53),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r4.8xlarge', 55),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'r4.16xlarge', 57),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c4.large', 59),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c4.xlarge', 61),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c4.2xlarge', 63),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c4.4xlarge', 65),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'c4.8xlarge', 67),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm4.large', 69),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm4.xlarge', 71),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm4.2xlarge', 73),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm4.4xlarge', 75),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm4.10xlarge', 77),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-1'), 'm4.16xlarge', 79),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 't2.medium', 3),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 't2.large', 5),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 't2.xlarge', 7),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 't2.2xlarge', 9),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r5.large', 11),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r5.xlarge', 13),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r5.2xlarge', 15),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r5.4xlarge', 17),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r5.12xlarge', 19),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r5.24xlarge', 21),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c5.large', 23),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c5.xlarge', 25),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c5.2xlarge', 27),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c5.4xlarge', 29),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c5.9xlarge', 31),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c5.18xlarge', 33),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm5.large', 35),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm5.xlarge', 37),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm5.2xlarge', 39),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm5.4xlarge', 41),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm5.12xlarge', 43),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm5.24xlarge', 45),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r4.large', 47),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r4.xlarge', 49),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r4.2xlarge', 51),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r4.4xlarge', 53),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r4.8xlarge', 55),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'r4.16xlarge', 57),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c4.large', 59),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c4.xlarge', 61),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c4.2xlarge', 63),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c4.4xlarge', 65),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'c4.8xlarge', 67),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm4.large', 69),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm4.xlarge', 71),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm4.2xlarge', 73),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm4.4xlarge', 75),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm4.10xlarge', 77),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-east-2'), 'm4.16xlarge', 79),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 't2.medium', 3),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 't2.large', 5),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 't2.xlarge', 7),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 't2.2xlarge', 9),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.large', 11),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.xlarge', 13),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.2xlarge', 15),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.4xlarge', 17),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.12xlarge', 19),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r5.24xlarge', 21),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.large', 23),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.xlarge', 25),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.2xlarge', 27),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.4xlarge', 29),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.9xlarge', 31),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c5.18xlarge', 33),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.large', 35),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.xlarge', 37),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.2xlarge', 39),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.4xlarge', 41),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.12xlarge', 43),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm5.24xlarge', 45),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.large', 47),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.xlarge', 49),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.2xlarge', 51),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.4xlarge', 53),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.8xlarge', 55),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'r4.16xlarge', 57),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.large', 59),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.xlarge', 61),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.2xlarge', 63),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.4xlarge', 65),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'c4.8xlarge', 67),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.large', 69),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.xlarge', 71),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.2xlarge', 73),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.4xlarge', 75),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.10xlarge', 77),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-1'), 'm4.16xlarge', 79),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 't2.medium', 3),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 't2.large', 5),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 't2.xlarge', 7),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 't2.2xlarge', 9),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r5.large', 11),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r5.xlarge', 13),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r5.2xlarge', 15),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r5.4xlarge', 17),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r5.12xlarge', 19),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r5.24xlarge', 21),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c5.large', 23),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c5.xlarge', 25),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c5.2xlarge', 27),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c5.4xlarge', 29),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c5.9xlarge', 31),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c5.18xlarge', 33),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm5.large', 35),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm5.xlarge', 37),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm5.2xlarge', 39),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm5.4xlarge', 41),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm5.12xlarge', 43),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm5.24xlarge', 45),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r4.large', 47),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r4.xlarge', 49),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r4.2xlarge', 51),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r4.4xlarge', 53),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r4.8xlarge', 55),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'r4.16xlarge', 57),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c4.large', 59),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c4.xlarge', 61),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c4.2xlarge', 63),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c4.4xlarge', 65),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'c4.8xlarge', 67),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm4.large', 69),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm4.xlarge', 71),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm4.2xlarge', 73),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm4.4xlarge', 75),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm4.10xlarge', 77),
+  ((SELECT ID FROM portal.providers WHERE name='AWS'), (SELECT ID FROM portal.provider_regions WHERE region='us-west-2'), 'm4.16xlarge', 79);

@@ -1,0 +1,117 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    app: deployer
+  name: deployer
+  namespace: swarmhub
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: deployer
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 50%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: deployer
+    spec:
+      containers:
+      - env:
+        - name: AWS_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_access_key
+              name: cloud-credentials
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_secret_access_key
+              name: cloud-credentials
+        - name: AWS_S3_BUCKET
+          valueFrom:
+            secretKeyRef:
+              key: aws_s3_bucket
+              name: cloud-credentials
+        - name: AWS_S3_REGION
+          valueFrom:
+            secretKeyRef:
+              key: aws_s3_region
+              name: cloud-credentials
+        - name: AWS_S3_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_s3_secret_access_key
+              name: cloud-credentials
+        - name: AWS_S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_s3_access_key
+              name: cloud-credentials
+        - name: AWS_US_EAST_1_AMI
+          valueFrom:
+            configMapKeyRef:
+              name: deployer-configs
+              key: aws_us_east_1_ami
+        - name: AWS_US_EAST_2_AMI
+          valueFrom:
+            configMapKeyRef:
+              name: deployer-configs
+              key: aws_us_east_2_ami
+        - name: AWS_US_WEST_1_AMI
+          valueFrom:
+            configMapKeyRef:
+              name: deployer-configs
+              key: aws_us_west_1_ami
+        - name: AWS_US_WEST_2_AMI
+          valueFrom:
+            configMapKeyRef:
+              name: deployer-configs
+              key: aws_us_west_2_ami
+        image: #build an image and put here
+        imagePullPolicy: Always
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - bash
+              - -c
+              - mkdir ~/.ssh && cp /tmp/ssh/swarmhub.pem ~/.ssh/swarmhub.pem && chmod
+                400 ~/.ssh/swarmhub.pem
+        name: deployer
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /tmp/ssh
+          name: ssh
+          readOnly: true
+        - mountPath: /etc/jwt
+          name: jwt
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: ssh
+        secret:
+          defaultMode: 420
+          items:
+          - key: swarmhub.pem
+            path: swarmhub.pem
+          secretName: ssh
+      - name: jwt
+        secret:
+          defaultMode: 420
+          items:
+          - key: jwt-key
+            path: jwt
+          secretName: jwt-key

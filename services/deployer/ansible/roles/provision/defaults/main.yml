@@ -1,0 +1,8 @@
+---
+instance_count: 0
+instance_type: t2-micro
+tag_name: example
+tag_ttl: 0
+
+security_groups: ['default', 'swarmhub_SSH', 'swarmhub_prometheus']
+

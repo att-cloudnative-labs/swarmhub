@@ -1,0 +1,12 @@
+[Unit]
+Description=go-webserver
+After=network-online.target
+
+[Service]
+User=root
+ExecStart=/opt/go-webserver/locust-go
+WorkingDirectory=/opt/go-webserver
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

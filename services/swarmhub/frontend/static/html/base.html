@@ -1,0 +1,57 @@
+{{ define "base" }}<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Swarmhub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.1/css/bulma.min.css">
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js" defer></script>
+    <script defer src="https://use.fontawesome.com/releases/v5.0.7/js/all.js"></script>
+    <style>
+      .testDetails {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .configWrap {
+        max-height: 200px;
+        overflow-y: auto;
+        display: inline-block;
+      }
+    </style>
+
+  </head>
+
+  <div id="app">
+
+  <nav class="navbar is-transparent">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">
+        <img src="static/images/attlogo.svg" alt="Logo" width="50" height="28">
+        <h1 class="title">swarmhub</h1>
+      </a>
+      <div class="navbar-burger burger" data-target="navbarExampleTransparentExample">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+
+    <div class="navbar-menu">
+      <div class="navbar-start">
+        <a class="navbar-item" href="/tests">
+            Tests
+        </a>
+        <a class="navbar-item" href="/grids">
+            Grids
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <body>
+    {{ template "body" . }}
+  </body>
+  </div>
+</html>
+{{ end }}

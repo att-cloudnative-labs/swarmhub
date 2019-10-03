@@ -1,0 +1,36 @@
+---
+LOCAL_ACCOUNTS_ENABLED: true
+LOGIN_DATA_LOCATION: localusers.csv
+LDAP_ACCOUNTS_ENABLED: false
+LDAP_ADDRESS: ldap-address-here.com:636
+LDAP_INSECURE_SKIP: false
+LDAP_USE_LOCAL_POWER_USERS: true
+LDAP_POWER_USERS_GROUPS: ["swarmhub power users"]
+LDAP_CONTROL: ["cn"]
+LDAP_BIND: CN=%s,OU=Enabled,OU=Accounts,DC=info,DC=company,DC=com
+LDAP_BASE_DN: DC=info,DC=company,DC=com
+LDAP_GROUP_FILTER: (&(member=CN=%v,OU=Enabled,OU=Accounts,DC=info,DC=company,DC=com)(objectClass=group))
+LDAP_ALL_USERS_READ_ONLY: false
+LDAP_READ_ONLY_USERS_GROUPS: ["swarmhub read only users"]
+
+DB_SOURCE_NAME: postgresql://plt@cockroachdb-public.swarmhub:26257/portal?sslmode=disable
+NATS_URL: nats.swarmhub.svc.cluster.local:4222
+
+#AWS_S3_BUCKET: set in k8s deployment
+#AWS_S3_ACCESS_KEY: set in k8s deployment
+#AWS_S3_SECRET_ACCESS_KEY: set in k8s deployment
+#AWS_S3_REGION: set in k8s deployment
+AWS_S3_SERVER_SIDE_ENCRYPTION: AES256
+
+GRAFANA_ENABLED: false
+GRAFANA_DOMAIN: https://your-grafana-domain.com
+GRAFANA_DASHBOARD_UID: GRAFUIDHERE
+
+HTML_DIR: /var/www/swarmhub/html
+USER_FILE_LOCATION: /var/www/swarmhub/data/powerusers
+
+LOCUST_MASTER_SECURITY_GROUPS: [default, swarmhub_HTTPS, swarmhub_SSH, swarmhub_prometheus]
+LOCUST_SLAVE_SECURITY_GROUPS: [default, swarmhub_SSH, swarmhub_prometheus]
+
+TLS_CERT_FILE_LOC: /app/tls/server.crt
+TLS_KEY_FILE_LOC: /app/tls/server.key

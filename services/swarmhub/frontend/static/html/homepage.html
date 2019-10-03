@@ -1,0 +1,263 @@
+{{ define "body" }}
+    <section class="section">
+      <div class="tile is-ancestor">
+        <div class="tile is-7 is-vertical is-parent">
+          <div class="tile is-child box">
+            <div class="level">
+              <div class="level-left">
+                <a class="button is-info title is-5" @click="isCreateTestModalActive = true">Create Test</a>
+              </div>
+              <div class="level-right">
+                <div class="field has-addons">
+                  <div class="control">
+                    <input class="input" type="text" placeholder="Find a test">
+                  </div>
+                  <div class="control">
+                    <a class="button is-info">
+                      Search
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div> 
+              <div class="box">
+              <div class="table-container">
+                <table class="table is-hoverable" style="width:100%" >
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Result</th>
+                    <th>Labels</th>
+                    <th>Created</th>
+                    <th>Launched</th>
+                    <th>Stopped</th>
+                  </tr>
+                  <tr v-for="test in listOfTests" v-bind:class="{ 'is-selected': data.ID==test.ID }" @click="loadTestData(test.ID)"> 
+                    <td>..{( test.ID.substring(test.ID.length - 6, test.ID.length) )}</td>
+                    <td>{( test.Name )}</td>
+                    <td>{( test.Status )}</td>
+                    <td>-</td>
+                    <td><p v-for="label in test.labels">label</p></td>
+                    <td>{( test.Created )}</td>
+                    <td>{( test.Launched )}</td>
+                    <td>{( test.Stopped )}</td>
+                  </tr>
+                </table> 
+              </div>
+              </div>
+            <nav class="pagination" role="navigation" aria-label="pagination">
+              <a class="pagination-previous">Previous</a>
+              <a class="pagination-next">Next page</a>
+              <ul class="pagination-list">
+                <li>
+                  <a class="pagination-link is-current" aria-label="Goto page 1" aria-current="page" class="is-selected">1</a>
+                </li>
+                <li>
+                  <a class="pagination-link" aria-label="Goto page 2" aria-current="page">2</a>
+                </li>
+                <li>
+                  <a class="pagination-link" aria-label="Goto page 3">3</a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+        <div class="tile is-parent">
+          <template v-if="data">
+          <div class="tile is-child box">
+            <h1 class="title">{( data.Name )}</h1>
+            <p class="subtitle is-6"><a class="button is-small is-rounded is-link">duplicate</a> <a class="button is-small is-rounded is-danger">delete</a></p>
+            <div class="block">
+              <p class="header is-6">Status: {( data.Status )} (<a @click="isShowLogsModalActive = true; getLogs(data.ID);">show logs</a>)</p>
+              <p class="header is-6">Created: {( data.Created )}</p>
+            </div>
+            <div class="block">
+              <a class="button is-link" @click="isLaunchTestModalActive = true; getGrids();">Launch</a>
+            </div>
+            <div class="testDetails">
+              <div class="field is-grouped is-grouped-multiline">
+                <p class="title is-4">Labels: &#8203;</p>
+                <div class="field">
+                  <div class="control">
+                    <input class="input is-small" type="text" placeholder="Add label">
+                  </div>
+                </div>
+                <p class="title is-4"> &#8203; &#8203; </p>
+                <div v-for="label in data.labels" class="control">
+                  <div class="tags has-addons">
+                    <a class="tag is-link">{( label )}</a>
+                    <a class="tag is-delete"></a>
+                  </div>
+                </div>
+              </div>
+              <div class="level">
+                <div class="level-left">
+                  <p class="title is-4">Description <a class="button">
+                    <span class="icon is-small">
+                      <i class="fas fa-edit"></i>
+                    </span>
+                  </a></p>
+                </div>
+              </div>
+              <div class="block">
+                <p>{( data.Desc )}</p>
+              </div>
+              <div class="block">
+                <div class="level-left">
+                  <p class="title is-4">Locust Config <a class="button">
+                    <span class="icon is-small">
+                      <i class="fas fa-edit"></i>
+                    </span>
+                  </a></p>
+                </div>
+                <div class="configWrap">
+                  <table class="table">
+                    <tr>
+                      <th>Parameter</th>
+                      <th>Value</th>
+                    </tr>
+                    <tr> 
+                      <td>test-config-file</td>
+                      <td>testconfig.txt</td>
+                    </tr>
+                    <tr> 
+                      <td>clients</td>
+                      <td>100</td>
+                    </tr>
+                    <tr>
+                      <td>hatch-rate</td>
+                      <td>10</td>
+                    </tr>
+                    <tr>
+                      <td>run-time</td>
+                      <td>3600</td>
+                    </tr>
+                    <tr>
+                      <td>loglevel</td>
+                      <td>ERROR</td>
+                    </tr>
+                    <tr>
+                      <td>load-profile</td>
+                      <td>[(0,0), (10m,100%), (+15m,0%)]</td>
+                    </tr>
+                  </table> 
+                </div>
+                <div class="block">
+                  <p class="title is-4">Attachments <a class="button">
+                    <span class="icon is-small">
+                      <i class="fas fa-trash"></i>
+                    </span>
+                  </a>
+                  <a class="button">
+                    <span class="icon is-small">
+                      <i class="fas fa-download"></i>
+                    </span>
+                  </a></p>
+                  <div class="select is-multiple">
+                    <select multiple size="5">
+                      <option value="resultscsv">results.csv</option>
+                      <option value="email_attachmentemail">email_attachment.email</option>
+                      <option value="valuespng">values.png</option>
+                    </select>
+                  </div>
+                </div>
+              </div>  
+            </div>
+          </template>
+          <template v-else>
+            <div class="tile is-child box">
+              <h1 class="title">No tests selected</h1>
+            </div>
+          </template>  
+          </div>
+        </div>
+   
+    </section>
+
+    <div class="modal" v-bind:class="{ 'is-active': isLaunchTestModalActive }">
+      <div class="modal-background">
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <p class="modal-card-title">{( data.Name )}</p>
+            <button class="delete" aria-label="close" @click="isLaunchTestModalActive = false;"></button>
+          </header>
+          <section class="modal-card-body">
+            <p>put stuff here i guess</p>
+            <div class="select">
+              <select v-model="gridIDForTest">
+                <option :value="undefined" disabled style="display:none">Select Grid</option>
+                <option  v-for="grid in deployedGrids" :value="grid.ID">{(grid.Name)}</option>
+              </select>
+              <label class="checkbox">
+                <input type="checkbox" v-model="isAutomatic">Start Immediately
+              </label>
+              
+            </div>
+            <a class="button is-primary" @click="launchTest(data.ID, gridIDForTest, isAutomatic)">Start</a>
+          </section>
+          <footer class="modal-card-foot">
+          </footer>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" v-bind:class="{ 'is-active': isCreateTestModalActive}">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Create Test</p>
+            <button class="delete" aria-label="close" @click="isCreateTestModalActive = false; clearCreateTest();"></button>
+          </header>
+          <section class="modal-card-body">
+            <div class="field">
+              <label class="label">Name</label>
+              <div class="control">
+                <input class="input" v-model="createTestData.Name" type="text" placeholder="Name of the Test">
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">Description</label>
+              <div class="control">
+                <textarea class="textarea" v-model="createTestData.Desc" placeholder="Textarea"></textarea>
+              </div>
+            </div>
+            <div class="file">
+              <label class="file-label">
+                <input class="file-input" type="file" name="testfile" id="fileid" accept=".zip" v-on:change="handleFileUpload()">
+                <span class="file-cta">
+                  <span class="file-icon">
+                    <i class="fas fa-upload"></i>
+                  </span>
+                  <span class="file-label">
+                    Upload a test…
+                  </span>
+                </span>
+              </label>
+              <progress max="100" :value.prop="uploadPercentage"></progress>
+            </div>
+          </section>
+          <footer class="modal-card-foot">
+            <button type="submit" class="button is-success" @click="createTest(); isCreateTestModalActive = false;">Submit</button>
+            <button class="button" @click="isCreateTestModalActive = false; clearCreateTest();">Cancel</button>
+          </footer>
+        </div>
+    </div>
+    
+    <div class="modal" v-bind:class="{ 'is-active': isShowLogsModalActive}">
+      <div class="modal-background"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Logs for {(data.Name)}</p>
+          <p class="modal-card-title">Running: {(logStatus)}</p>
+          <button class="delete" aria-label="close" @click="isShowLogsModalActive = false; stopGettingLogs(); getTests();"></button>
+        </header>
+        <section class="modal-card-body">
+          <p v-for="log in logs">{(log.Output)}</p>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button" @click="isShowLogsModalActive = false; stopGettingLogs(); getTests();">Close</button>
+        </footer>
+      </div>
+    </div>
+{{ end }}
