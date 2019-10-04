@@ -122,6 +122,7 @@ func LoginPagePost(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 
 	tokenString, err := login(username, password)
 	if err != nil {
+		fmt.Printf("login error for user %v: %v\n", username, err)
 		w.WriteHeader(http.StatusSeeOther)
 		LoginPageMessage(w, r, ps, "Unable to login, make sure you are using correct credentials.")
 		return
@@ -168,7 +169,6 @@ func TokenAuth(handler httprouter.Handle) httprouter.Handle {
 }
 
 func main() {
-	fmt.Println("starting up...")
 	api.StartNats()
 	ConfigSet()
 
@@ -191,6 +191,7 @@ func main() {
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT)
 	go api.Shutdown(signalChan)
 
+	fmt.Println("started up")
 	err := http.ListenAndServeTLS(":8443", tlsCertFileLoc, tlsKeyFileLoc, router)
 	if err != nil {
 		fmt.Println(err.Error())
