@@ -410,7 +410,10 @@ export default {
       fetch('/api/grafana/info')
         .then(response => {
           if (response.status === 200) {
-            this.grafanaConfig = response.json();
+             response.json().then(data => {
+               this.grafanaConfig = data;
+            });
+            
           }
         })
     },
@@ -610,7 +613,6 @@ export default {
         .get('/api/test/' + testID + '/attachments')
         .then(response => {
           if (response.data == null) {
-            console.log("No attachment data")
             this.testAttachments = []
           } else {
             console.log("Adding attachment filenames to list.")

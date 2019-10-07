@@ -17,7 +17,7 @@ FROM builder3 as builder4
 COPY frontend/ ./
 RUN npm run build
 
-FROM alpine:3.9
+FROM alpine:latest
 RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
 RUN update-ca-certificates
 RUN mkdir -p /app
