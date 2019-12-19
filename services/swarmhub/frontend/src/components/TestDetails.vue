@@ -44,7 +44,7 @@
 
             <div class="block">
                 <a v-if="test.SnapshotURL != ''" v-bind:href="test.SnapshotURL" target="_blank" class="button is-link">Grafana Snapshot</a>
-                <a v-else-if="grafanaConfig.Enabled == true" href="{{ grafanaconfig.BaseURL }}/d/{{ grafanaconfig.DashboardUID}}" target="_blank" class="button is-link">Grafana</a>
+                <a v-else-if="grafanaConfig.Enabled == true" v-bind:href="grafanaConfig.BaseURL + '/d/' + grafanaConfig.DashboardUID" target="_blank" class="button is-link">Grafana</a>
             </div>
 
             <div class="level">
