@@ -18,15 +18,14 @@ import (
 )
 
 var (
-	htmlDir string
-	LdapAddress string
-	UsersFromFile string
-	JwtFile string
+	htmlDir          string
+	LdapAddress      string
+	UsersFromFile    string
+	JwtFile          string
 	UserFileLocation string
-	tlsCertFileLoc string
-	tlsKeyFileLoc string
+	tlsCertFileLoc   string
+	tlsKeyFileLoc    string
 )
-
 
 type HomeData struct {
 	User    string
@@ -169,8 +168,8 @@ func TokenAuth(handler httprouter.Handle) httprouter.Handle {
 }
 
 func main() {
-	api.StartNats()
 	ConfigSet()
+	api.StartNats(Registry)
 
 	router := httprouter.New()
 
