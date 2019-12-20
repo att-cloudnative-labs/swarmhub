@@ -11,6 +11,7 @@ import (
 
 	nats "github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
+	"github.com/spf13/viper"
 )
 
 var sc stan.Conn
@@ -34,18 +35,15 @@ type deploymentStatus struct {
 	Params         []string
 }
 
-func init() {
-	loadNatsSettings()
+func loadNatsSettings(conf *viper.Viper) {
+	natsUsername = conf.GetString("NATS_USERNAME")
+	natsPassword = conf.GetString("NATS_PASSWORD")
+	natsURL = conf.GetString("NATS_URL")
+	stanClusterID = conf.GetString("STAN_CLUSTER_ID")
 }
 
-func loadNatsSettings() {
-	natsUsername = os.Getenv("NATS_USERNAME")
-	natsPassword = os.Getenv("NATS_PASSWORD")
-	natsURL = os.Getenv("NATS_URL")
-	stanClusterID = os.Getenv("STAN_CLUSTER_ID")
-}
-
-func StartNats() {
+func StartNats(config *viper.Viper) {
+	loadNatsSettings(config)
 	var natsServerURL string
 	if natsPassword == "" || natsUsername == "" {
 		fmt.Println("Nats without username/password.")
@@ -69,7 +67,6 @@ func StartNats() {
 	if err != nil {
 		log.Fatal("Failed to connect to nats streaming: ", err)
 	}
-
 	startTime := time.Now()
 
 	// Used to receive messages on the state of deployments. Used to update the database
