@@ -1,9 +1,9 @@
 package api
 
 import (
-	"net/http"
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/ec2"
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
+	"net/http"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -48,6 +48,9 @@ func SetRouterPaths(router *httprouter.Router) {
 	router.GET("/api/grids/list/:id", TokenApiAuth(GridsPaginate))
 	router.GET("/api/test", TokenApiAuth(Test))
 	router.POST("/api/test", TokenApiAuth(CreateTest))
+	router.POST("/api/locust_config", TokenApiAuth(CreateLocustConfig))
+	router.PUT("/api/locust_config/:id", TokenApiAuth(UpdateLocustConfig))
+	router.GET("/api/test/:id/locust_config", TokenApiAuth(GetLocustConfigByTestId))
 }
 
 func TokenApiAuth(handler httprouter.Handle) httprouter.Handle {

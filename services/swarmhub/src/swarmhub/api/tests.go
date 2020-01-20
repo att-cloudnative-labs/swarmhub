@@ -5,14 +5,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/storage"
 	"io"
 	"log"
 	"net/http"
 	"path/filepath"
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/storage"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -207,6 +208,16 @@ func DuplicateTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 	newTestID, err := db.DuplicateTest(testID)
 	if err != nil {
 		v := result{Status: "Failed", Description: fmt.Sprintf("Failed to duplicate test %v because %v", testID, err)}
+		jsonResult, _ := json.Marshal(v)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(jsonResult)
+		return
+	}
+
+	err = db.DuplicateLocustConfig(testID, newTestID)
+	if err != nil {
+		db.UpdateTestStatus(newTestID, "Missing info")
+		v := result{Status: "Failed", Description: fmt.Sprintf("Failed to duplicate locust config for test %v because %v", testID, err)}
 		jsonResult, _ := json.Marshal(v)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(jsonResult)
@@ -758,7 +769,15 @@ func CreateTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	go storage.UploadScript(testID, scriptID, testFiles.Name, file)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go storage.UploadScript(testID, scriptID, testFiles.Name, file, &wg)
+	wg.Wait()
+
+	// check if test got locust config
+	if !db.TestWithLocustConfig(testID) {
+		db.UpdateTestStatus(testID, "Missing info")
+	}
 
 	desc := "Looks good, sent off to upload!"
 	resp := response{success, desc}

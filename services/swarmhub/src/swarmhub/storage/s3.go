@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"mime/multipart"
+	"sync"
 
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
 
@@ -42,7 +43,9 @@ func SetS3(accessKey, secretAccessKey, region, bucketName string) error {
 }
 
 // UploadScript is used for uploading test scripts
-func UploadScript(testid string, scriptid string, zipFileName string, file multipart.File) error {
+func UploadScript(testid string, scriptid string, zipFileName string, file multipart.File, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	uploadName := "scripts/" + scriptid + "/file/" + zipFileName
 	fmt.Println("Uploading", uploadName)
 	db.UpdateTestStatus(testid, "Uploading")
@@ -53,7 +56,7 @@ func UploadScript(testid string, scriptid string, zipFileName string, file multi
 		return err
 	}
 	fmt.Println("Finished uploading", uploadName)
-	db.UpdateTestStatus(testid, "Ready")
+	db.UpdateTestStatus(testid, "Uploaded")
 	return err
 }
 
