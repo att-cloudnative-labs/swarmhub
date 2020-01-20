@@ -86,6 +86,13 @@ CREATE TABLE portal.test (
    last_edited_time TIMESTAMP DEFAULT current_timestamp()
 );
 
+CREATE TABLE portal.locust_config (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clients INT NOT NULL,
+    hatch_rate INT NOT NULL,
+    test_id UUID REFERENCES portal.test (id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
 CREATE TABLE portal.tests_labels (
     test_id UUID REFERENCES portal.test (id) ON UPDATE CASCADE ON DELETE CASCADE,
     label_id SERIAL REFERENCES portal.labels (id) ON UPDATE CASCADE,
@@ -146,7 +153,7 @@ CREATE TABLE portal.test_attachments (
     UNIQUE (test_id, filename)
 );
 
-INSERT INTO portal.test_status (status) VALUES ('Ready'), ('Creating'), ('Uploading'), ('Queued'), ('Expired'), ('Deploying'), ('Deployed'), ('Launching'), ('Launched'), ('Running'), ('Stopping'), ('Stopped'), ('Missing info'), ('Upload Failed'), ('Error'), ('Deleted');
+INSERT INTO portal.test_status (status) VALUES ('Ready'), ('Creating'), ('Uploading'), ('Uploaded'), ('Queued'), ('Expired'), ('Deploying'), ('Deployed'), ('Launching'), ('Launched'), ('Running'), ('Stopping'), ('Stopped'), ('Missing info'), ('Upload Failed'), ('Error'), ('Deleted');
 INSERT INTO portal.test_results (result) VALUES ('Pass'), ('Partial'), ('Fail');
 
 INSERT INTO portal.grid_status (status) VALUES ('Ready'), ('Available'), ('Error'), ('Deploying'), ('Deployed'), ('Stopping'), ('Stopped'), ('Cleaning'), ('Destroyed'), ('Expired'), ('Deleting'), ('Deleted');

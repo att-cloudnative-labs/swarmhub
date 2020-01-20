@@ -738,10 +738,10 @@ a.has-text-warning:hover, a.has-text-warning:focus {
   background-color: #ffdd57 !important; }
 
 .has-text-danger {
-  color: #ff3860 !important; }
+  color: #ff0000 !important; }
 
 a.has-text-danger:hover, a.has-text-danger:focus {
-  color: #ff0537 !important; }
+  color: #ff0000 !important; }
 
 .has-background-danger {
   background-color: #ff3860 !important; }

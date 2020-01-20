@@ -34,10 +34,15 @@ spec:
             secretKeyRef:
               key: aws_secret_access_key
               name: cloud-credentials
-        - name: AWS_S3_BUCKET
+        - name: AWS_S3_BUCKET_LOCUSTFILES
           valueFrom:
             secretKeyRef:
-              key: aws_s3_bucket
+              key: aws_s3_bucket_locustfiles
+              name: cloud-credentials
+        - name: AWS_S3_BUCKET_TFSTATE
+          valueFrom:
+            secretKeyRef:
+              key: aws_s3_bucket_tfstate
               name: cloud-credentials
         - name: AWS_S3_REGION
           valueFrom:
@@ -54,26 +59,6 @@ spec:
             secretKeyRef:
               key: aws_s3_access_key
               name: cloud-credentials
-        - name: AWS_US_EAST_1_AMI
-          valueFrom:
-            configMapKeyRef:
-              name: deployer-configs
-              key: aws_us_east_1_ami
-        - name: AWS_US_EAST_2_AMI
-          valueFrom:
-            configMapKeyRef:
-              name: deployer-configs
-              key: aws_us_east_2_ami
-        - name: AWS_US_WEST_1_AMI
-          valueFrom:
-            configMapKeyRef:
-              name: deployer-configs
-              key: aws_us_west_1_ami
-        - name: AWS_US_WEST_2_AMI
-          valueFrom:
-            configMapKeyRef:
-              name: deployer-configs
-              key: aws_us_west_2_ami
         image: #build an image and put here
         imagePullPolicy: Always
         lifecycle:

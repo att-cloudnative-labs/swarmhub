@@ -20,7 +20,7 @@ spec:
         image: #build an image and put here
         imagePullPolicy: Always
         env:
-          - name: AWS_ACCESS_KEY
+          - name: AWS_ACCESS_KEY_ID
             valueFrom:
               secretKeyRef:
                 name: cloud-credentials
@@ -30,3 +30,13 @@ spec:
               secretKeyRef:
                 name: cloud-credentials
                 key: aws_secret_access_key
+          - name: AWS_S3_BUCKET_TFSTATE
+            valueFrom:
+              secretKeyRef:
+                key: aws_s3_bucket_tfstate
+                name: cloud-credentials
+          - name: AWS_S3_REGION
+            valueFrom:
+              secretKeyRef:
+                key: aws_s3_region
+                name: cloud-credentials

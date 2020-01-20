@@ -38,22 +38,21 @@ func GenerateGrafanaSnapshotHandler(w http.ResponseWriter, r *http.Request, ps h
 	if !GrafanaEnabled {
 		return
 	}
-	decoder := json.NewDecoder(r.Body)
 
-	type grafana struct {
-		TestID string
+	type testIdStruct struct {
+		TestID string `json:"test_id"`
 	}
+	var reqStruct testIdStruct
 
-	var snapshot grafana
-
-	err := decoder.Decode(&snapshot)
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&reqStruct)
 	if err != nil {
-		err = fmt.Errorf("error decoding payload: %v", err)
-		http.Error(w, "Need to provide Name, Start, and End fields", http.StatusInternalServerError)
+		message := fmt.Sprintf("invalid request data")
+		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
 
-	err = generateGrafanaSnapshotFromTestID(snapshot.TestID)
+	err = generateGrafanaSnapshotFromTestID(reqStruct.TestID)
 	if err != nil {
 		err = fmt.Errorf("failed to generateGrafanaSnapshot: %v", err)
 		fmt.Println(err)

@@ -16,7 +16,7 @@ LDAP_READ_ONLY_USERS_GROUPS: ["swarmhub read only users"]
 DB_SOURCE_NAME: postgresql://plt@cockroachdb-public.swarmhub:26257/portal?sslmode=disable
 NATS_URL: nats.swarmhub.svc.cluster.local:4222
 
-#AWS_S3_BUCKET: set in k8s deployment
+#AWS_S3_BUCKET_LOCUSTFILES: set in k8s deployment
 #AWS_S3_ACCESS_KEY: set in k8s deployment
 #AWS_S3_SECRET_ACCESS_KEY: set in k8s deployment
 #AWS_S3_REGION: set in k8s deployment
