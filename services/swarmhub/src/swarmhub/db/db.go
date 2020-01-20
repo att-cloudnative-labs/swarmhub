@@ -51,6 +51,13 @@ type TestFile struct {
 	Modified time.Time
 }
 
+type LocustConfig struct {
+	ID        string `json:"id" db:"id"`
+	Clients   uint32 `json:"clients" db:"clients"`
+	HatchRate uint32 `json:"hatch_rate" db:"hatch_rate"`
+	TestId    string `json:"test_id" db:"test_id"`
+}
+
 type GridStruct struct {
 	ID       string
 	Name     string
