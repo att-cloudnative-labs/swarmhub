@@ -31,8 +31,9 @@
         </p>
         <div class="block">
           <p class="header is-6">
-            Status: {{ test.Status }} (
-            <a @click="showLogs(true);">show logs</a>)
+            Status:
+            <a v-bind:class="{ 'has-text-danger': test.Status == 'Missing info'  }" >{{ test.Status }}</a>
+            (<a @click="showLogs(true);">show logs</a>)
           </p>
           <p class="header is-6">Created: {{ test.Created | moment("lll") }}</p>
         </div>
@@ -109,6 +110,7 @@
             <div class="level-left">
               <p class="title is-4">
                 Locust Config
+                <a v-if="test.Status == 'Missing info'" class="has-text-danger">(!)</a>
                 <a class="button" @click="isEditLocustConfigActive = true;">
                   <span class="icon is-small">
                     <font-awesome-icon icon="edit" />
@@ -124,7 +126,7 @@
                 </tr>
                 <tr v-for="config in testConfig" :key="config">
                   <td>{{ config.Name }}</td>
-                  <td>{{ config.Value }}</td>
+                  <td v-bind:class="{ 'has-text-grey': config.Value == '*required' }">{{ config.Value }}</td>
                 </tr>
               </table>
             </div>
@@ -489,8 +491,8 @@ export default {
       grafanaConfig: { Enabled: false, BaseURL: "", DashboardUID: "" },
       testfiles: [],
       testConfig: [
-        { Name: "clients", Value: "-" },
-        { Name: "hatch-rate", Value: "-" },
+        { Name: "clients", Value: "*required" },
+        { Name: "hatch-rate", Value: "*required" },
         { Name: "run-time", Value: "3600" },
         { Name: "loglevel", Value: "ERROR" },
         { Name: "load-profile", Value: "[(0,0), (10m,100%), (+15m,0%)]" }
@@ -590,7 +592,7 @@ export default {
             this.test = response.data;
             this.testEdit = JSON.parse(JSON.stringify(this.test));
             this.getTestLink(testid);
-            console.log(" testID response.data", response.data);
+            console.log("test response.data", response.data);
           })
           .catch(error => {
             console.log("FAILURE: ", error);
@@ -604,9 +606,17 @@ export default {
         axios
           .get("/api/test/" + testid + "/locust_config")
           .then(response => {
-            this.locustConfig = response.data;
-            this.updateTestConfig(response.data.clients, response.data.hatch_rate);
-              console.log("locust response.data", response.data);
+            if (response.data != "") {
+              this.locustConfig = response.data;
+              this.updateTestConfig(
+                response.data.clients,
+                response.data.hatch_rate
+              );
+            } else {
+              this.updateTestConfig("*required", "*required");
+            }
+
+            console.log("locust response.data", response.data);
           })
           .catch(error => {
             console.log("FAILURE: ", error);
@@ -821,7 +831,7 @@ export default {
           this.loadTestData(this.testID);
           this.$emit("get-tests", "");
           if (response.status == 201) {
-            console.log("response", response);
+            console.log("locust config add success response", response);
             this.locust_config_id = response.id;
             this.updateTestConfig(this.clients, this.hatch_rate);
           }
@@ -833,7 +843,7 @@ export default {
             this.loadTestData(this.testID);
             this.$emit("get-tests", "");
             if (response.status == 200) {
-              console.log("response", response);
+              console.log("locust config update success response", response);
               this.updateTestConfig(this.clients, this.hatch_rate);
             }
           });
