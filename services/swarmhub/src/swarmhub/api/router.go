@@ -48,6 +48,11 @@ func SetRouterPaths(router *httprouter.Router) {
 	router.GET("/api/grids/list/:id", TokenApiAuth(GridsPaginate))
 	router.GET("/api/test", TokenApiAuth(Test))
 	router.POST("/api/test", TokenApiAuth(CreateTest))
+	router.POST("/api/grid_template", TokenApiAuth(CreateGridTemplate))
+	router.GET("/api/grid_templates", TokenApiAuth(GetAllGridTemplates))
+	router.GET("/api/grid_template/:id", TokenApiAuth(GetGridTemplateById))
+	router.PUT("/api/grid_template/:id", TokenApiAuth(UpdateGridTemplate))
+	router.DELETE("/api/grid_template/:id", TokenApiAuth(DeleteGridTemplate))
 }
 
 func TokenApiAuth(handler httprouter.Handle) httprouter.Handle {
