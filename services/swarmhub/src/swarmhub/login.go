@@ -6,11 +6,11 @@ import (
 	"encoding/base64"
 	"encoding/csv"
 	"fmt"
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
 	"strconv"
 	"strings"
 

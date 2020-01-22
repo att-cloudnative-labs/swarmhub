@@ -14,7 +14,7 @@ import (
 
 var (
 	tlsCertfileLoc = os.Getenv("TLS_CERT_FILE_LOC")
-	tlsKeyFileLoc = os.Getenv("TLS_KEY_FILE_LOC")
+	tlsKeyFileLoc  = os.Getenv("TLS_KEY_FILE_LOC")
 )
 
 func main() {
