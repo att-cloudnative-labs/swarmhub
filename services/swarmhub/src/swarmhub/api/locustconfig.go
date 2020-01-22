@@ -37,8 +37,8 @@ func CreateLocustConfig(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 	// update test to 'Ready' status
 	db.UpdateTestStatus(locustConfig.TestId, "Ready")
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	w.Write(json)
 }
 
@@ -47,7 +47,7 @@ func GetLocustConfigByTestId(w http.ResponseWriter, r *http.Request, ps httprout
 
 	locustConfig, err := db.GetLocustConfigByTestId(testId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNoContent)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -58,8 +58,8 @@ func GetLocustConfigByTestId(w http.ResponseWriter, r *http.Request, ps httprout
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	w.Write(json)
 }
 
