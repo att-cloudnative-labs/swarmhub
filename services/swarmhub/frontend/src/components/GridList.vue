@@ -3,7 +3,10 @@
     <div class="tile is-child box">
       <div class="level">
         <div class="level-left">
-          <a class="button is-info title is-5" @click="isCreateGridModalActive = true; getGridProviders();">Create Grid</a>
+          <div>
+            <a class="button is-info title is-5" @click="isCreateGridModalActive = true; getGridProviders();">Create Grid</a>
+            <a class="button is-info title is-5" style="margin-left: 10px" @click="isGridTemplateModalActive = true; getGridTemplates();">Template</a>
+          </div>
         </div>
       </div>
       <div class="box">
@@ -39,6 +42,7 @@
           <button :disabled="lastGridID===lastGridIDInList" class="pagination-next" @click="$emit('next-page', lastGridIDInList);">Next page</button>
       </nav>
       <create-grid :isCreateGridModalActive="isCreateGridModalActive" :gridID="selectedGridID" :providers="providers" @is-active="updateCreateGridBool" @get-grids="getGrids"/>
+      <grid-templates :isGridTemplateModalActive="isGridTemplateModalActive" :gridTemplates="gridTemplates"  :providers="providers" @is-active="updateGridTemplateBool" @get-grids="getGrids" @get-GridTemplates="getGridTemplates"/>
       </div> 
     </div>
 </template>
@@ -46,11 +50,13 @@
 <script>
 import axios from 'axios';
 import CreateGrid from '@/components/CreateGrid.vue'
+import GridTemplates from '@/components/GridTemplates.vue'
 
 export default {
   name: 'GridList',
   components: {
     CreateGrid,
+    GridTemplates,
   },
   props: {
     selectedGridID: String,
@@ -64,6 +70,8 @@ export default {
     return {
       isCreateGridModalActive: false,
       providers: [],
+      isGridTemplateModalActive: false,
+      gridTemplates: [],
     }
   },
   methods: {
@@ -78,6 +86,16 @@ export default {
     },
     getGrids: function (gridID) {
       this.$emit('get-grids', gridID)
+    },
+    getGridTemplates: function () {
+      this.getGridProviders();
+      axios
+       .get('/api/grid_templates')
+       .then(response => {this.gridTemplates = response.data})
+       .catch(error => {console.log("FAILURE: ", error)});
+    },
+    updateGridTemplateBool (bool) {
+      this.isGridTemplateModalActive = bool
     },
   },
 }
