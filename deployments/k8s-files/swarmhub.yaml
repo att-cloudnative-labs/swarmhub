@@ -66,8 +66,8 @@ spec:
             secretKeyRef:
               key: aws_access_key
               name: cloud-credentials
-        image: swarmhub
-        imagePullPolicy: IfNotPresent
+        image: #build an image and put here
+        imagePullPolicy: Always
         name: swarmhub
         ports:
         - containerPort: 8443
