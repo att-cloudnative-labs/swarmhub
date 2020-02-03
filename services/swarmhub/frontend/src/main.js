@@ -4,10 +4,10 @@ import router from './router'
 import './../node_modules/bulma/css/bulma.css';
 
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faCoffee, faEdit, faTrash, faDownload, faUpload, faSave } from '@fortawesome/free-solid-svg-icons'
+import { faCoffee, faEdit, faTrash, faDownload, faUpload, faPlusCircle, faMinusCircle, faSave } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-library.add(faCoffee, faEdit, faTrash, faDownload, faUpload, faSave)
+library.add(faCoffee, faEdit, faTrash, faDownload, faUpload, faPlusCircle, faMinusCircle, faSave)
 
 Vue.use(require('vue-moment'));
 

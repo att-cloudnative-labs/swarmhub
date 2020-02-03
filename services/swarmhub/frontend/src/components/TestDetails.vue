@@ -256,7 +256,7 @@
           </div>
         </div>
 
-        <div class="modal" v-bind:class="{ 'is-active': isDeployTestModalActive }">
+        <!-- <div class="modal" v-bind:class="{ 'is-active': isDeployTestModalActive }">
           <div class="modal-background"></div>
           <div class="modal-content">
             <div class="box">
@@ -281,6 +281,54 @@
                 @click="deployTest();"
               >Deploy</button>
               <button class="button" @click="clearDeployModal();">Cancel</button>
+            </div>
+          </div>
+        </div> -->
+        <div class="modal" v-bind:class="{ 'is-active': isDeployTestModalActive }">
+          <div class="modal-background"></div>
+          <div class="modal-content">
+            <div class="box">
+              <div class="field">
+                <label class="label">Choose Grid(s):</label>
+                <div class="control">
+                  <div class="select">
+                    <select v-model="grid" @change="toggleAddGridReady()">
+                      <option :value="undefined" style="display:none" disabled>Select grid for test</option>
+                      <option
+                        v-for="_grid in listOfGrids"
+                        :key="_grid.ID"
+                        :value="_grid"
+                      >{{_grid.Name}}</option>
+                    </select>
+                  </div>
+                  <button v-if="addGridReady" class="button is-white" @click="selectGrid()">
+                    <span class="icon has-text-success">
+                      <font-awesome-icon icon="plus-circle" />
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <label class="label" style="padding-top:0px">Selected Grid(s):</label>
+              <div v-for="grid in selectedGrids" :key="grid.ID">
+                <div class="block">
+                  <span class="tag is-white" style="font-size:15px">
+                    {{grid.Name}}
+                    <button class="button is-white" @click="removeSelectedGrid(grid)">
+                      <span class="icon has-text-danger">
+                        <font-awesome-icon icon="minus-circle" />
+                      </span>
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <div style="margin-top:15px">
+                <button
+                  v-bind:disabled="!testDeployReady"
+                  class="button is-success"
+                  @click="deployTest();"
+                >Deploy</button>
+                <button class="button" @click="clearDeployModal();">Cancel</button>
+              </div>
             </div>
           </div>
         </div>
@@ -519,6 +567,8 @@ export default {
       logs: "",
       listOfGrids: [],
       grid: {},
+      selectedGrids: [],
+      addGridReady: false,
       region: "us-east-1",
       testDeployReady: false,
       startAutomatically: false,
@@ -724,16 +774,25 @@ export default {
       }
     },
     deployTest: function() {
+      console.log('this.selectedGrids', this.selectedGrids)
+      var gridsToDeploy = [];
+      this.selectedGrids.map(grid => {
+        gridsToDeploy.push({grid_id: grid.ID, grid_region: grid.Region})
+      })
+      console.log('this.gridsToDeploy', this.gridsToDeploy)
+      console.log('gridsToDeploy', gridsToDeploy)
+
       var path, body;
+
       path = "/api/test/" + this.test.ID + "/start";
       body = {
-        GridID: this.grid.ID,
-        GridRegion: this.grid.Region,
-        StartAutomatically: this.startAutomatically
+        grids: gridsToDeploy,
+        start_automatically: this.startAutomatically
       };
       axios.post(path, body).then(response => {
         this.isDeployTestModalActive = false;
         this.loadTestData(this.test.ID);
+        this.selectedGrids = [];
         this.$emit("get-tests", "");
       });
     },
@@ -860,6 +919,33 @@ export default {
           Value: "[(0,0), (10m,100%), (+15m,0%)]"
         }
       ];
+    },
+    selectGrid: function() {
+      if (this.grid) {
+        if (this.grid.ID != "") {
+          this.testDeployReady = true;
+          const newList = this.listOfGrids.filter(i => i.ID !== this.grid.ID);
+          this.listOfGrids = newList;
+          this.selectedGrids.push(this.grid);
+          this.grid = {};
+          this.addGridReady = false;
+        } else {
+          this.testDeployReady = false;
+        }
+      }
+    },
+    removeSelectedGrid: function(grid) {
+      let newSelectedGrids = this.selectedGrids.filter(i => i.ID !== grid.ID);
+      this.selectedGrids = newSelectedGrids;
+      this.listOfGrids.push(grid);
+      if (this.selectedGrids.length === 0) {
+        this.testDeployReady = false;
+      }
+    },
+    toggleAddGridReady: function() {
+      if (this.grid) {
+        this.addGridReady = true;
+      }
     }
   }
 };
