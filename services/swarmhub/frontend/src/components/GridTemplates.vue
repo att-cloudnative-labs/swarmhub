@@ -462,9 +462,6 @@ export default {
         .then(response => {
           this.$emit("get-grids", "latest");
           this.$emit("get-gridTemplates", "latest");
-          // if (response.status == 200) {
-          //   console.log("updateGridTemplate success response", response);
-          // }
         });
     },
     deleteGridTemplate: function() {
@@ -503,6 +500,7 @@ export default {
       this.createGridData.TTL = "";
       this.templateSelected = false;
       this.selectedTemplate = {};
+      this.editTemplateActive = false;
     },
     extractGridRegions: function(regions) {
       var i;
@@ -543,6 +541,8 @@ export default {
     handleSelectTemplate: function() {
       this.templateSelected = true;
       this.createGridData = this.selectedTemplate;
+      this.getGridRegions(this.createGridData.Provider);
+      this.getGridInstances(this.createGridData.Provider, this.createGridData.Region);
     }
   }
 };
