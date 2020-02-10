@@ -15,19 +15,17 @@ import (
 )
 
 var (
-	cmdMap = make(map[string]*CommandStruct)
-	natsUsername string
-	natsPassword string
-	natsURL string
-	clusterID string
-	startCmdMutex = &sync.Mutex{}
-	message = make(chan string)
-	sc stan.Conn
-	subCmdStart stan.Subscription
+	cmdMap          = make(map[string]*CommandStruct)
+	natsUsername    string
+	natsPassword    string
+	natsURL         string
+	clusterID       string
+	startCmdMutex   = &sync.Mutex{}
+	message         = make(chan string)
+	sc              stan.Conn
+	subCmdStart     stan.Subscription
 	subDeployerStop stan.Subscription
 )
-
-
 
 type CommandStruct struct {
 	ID               string

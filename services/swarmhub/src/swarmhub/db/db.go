@@ -63,6 +63,17 @@ type GridStruct struct {
 	Nodes    string
 }
 
+type GridTemplate struct {
+	ID       string
+	Name     string
+	TTL      int
+	Provider string
+	Region   string
+	Master   string `json:"MasterType" db:"master_type"`
+	Slave    string `json:"SlaveType" db:"slave_type"`
+	Nodes    int    `json:"SlaveNodes" db:"slave_nodes"`
+}
+
 const dbType = "postgres"
 
 // SourceName is the database source name

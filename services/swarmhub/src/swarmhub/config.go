@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/spf13/viper"
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/api"
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/storage"
+	"github.com/spf13/viper"
 )
 
 // Registry is a local version of viper
@@ -89,11 +89,11 @@ func grafanaSet() {
 func convertSliceToBashString(list []string) string {
 	listBytes := []byte("[")
 	for i, v := range list {
-	     if i == 0 {
-	         listBytes = append(listBytes, "\"" + v + "\""...)
-	         continue
-	     }
-	     listBytes = append(listBytes, ", \"" + v + "\""...)
+		if i == 0 {
+			listBytes = append(listBytes, "\""+v+"\""...)
+			continue
+		}
+		listBytes = append(listBytes, ", \""+v+"\""...)
 	}
 	listBytes = append(listBytes, "]"...)
 	return string(listBytes)

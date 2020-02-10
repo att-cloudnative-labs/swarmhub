@@ -3,9 +3,9 @@ package ec2
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
 	"net/http"
 	"os"
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
