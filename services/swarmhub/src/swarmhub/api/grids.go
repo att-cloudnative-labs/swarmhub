@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
@@ -73,8 +74,27 @@ func StartGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
+	slaveCore, err := db.GetInstanceCore(gridRegion, grid.Slave)
+	if err != nil {
+		// Print error but continue on
+		fmt.Printf("Failed to get slave core %v\n", err)
+	}
+
 	ttlEpoch := strconv.FormatInt(time.Now().Add(time.Minute*time.Duration(ttl)).Unix(), 10)
-	message := &natsMessage{ID: grid.ID, Cmd: "/ansible/gridProvision.sh", Params: []string{grid.ID, grid.Region, grid.Master, grid.Slave, grid.Nodes, ttlEpoch, LocustMasterSecurityGroups, LocustSlaveSecurityGroups}, DeploymentType: "Grid"}
+	params := map[string]string{
+		"GRID_NAME":                    grid.ID,
+		"GRID_REGION":                  gridRegion,
+		"MASTER_INSTANCE":              grid.Master,
+		"SLAVE_INSTANCE":               grid.Slave,
+		"SLAVE_INSTANCE_CORE":          slaveCore,
+		"SLAVE_INSTANCE_COUNT":         grid.Nodes,
+		"PROVIDER":                     strings.ToLower(grid.Provider),
+		"TTL":                          ttlEpoch,
+		"LOCUST_MASTER_SECURITY_GROUP": LocustMasterSecurityGroups,
+		"LOCUST_SLAVE_SECURITY_GROUP": LocustSlaveSecurityGroups,
+		"PROVISION":"true",
+	}
+	message := &natsMessage{ID: grid.ID, Params: params, DeploymentType: "Grid"}
 	b, err := json.Marshal(message)
 	if err != nil {
 		fmt.Println("Not publishing nats message. Failed to convert to json: ", err.Error())
@@ -89,7 +109,14 @@ func StartGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	return
 }
 func stopGrid(id string) error {
-	message := &natsMessage{ID: id, DeploymentType: "Grid"}
+	params := map[string]string{
+		"GRID_NAME":                    id,
+		"GRID_REGION":                  gridRegion,
+		"SLAVE_INSTANCE_COUNT":         grid.Nodes,
+		"PROVIDER":                     strings.ToLower(grid.Provider),
+		"DESTROY":"true",
+	}
+	message := &natsMessage{ID: id, Params: params,DeploymentType: "Grid"}
 	b, err := json.Marshal(message)
 	if err != nil {
 		fmt.Println("Not publishing nats message. Failed to convert to json: ", err.Error())

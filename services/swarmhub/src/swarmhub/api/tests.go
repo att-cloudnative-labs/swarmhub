@@ -77,11 +77,27 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
+	locustConfig, err := db.GetLocustConfigByTestId(testId)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Unable to get locust config %v", err.Error())))
+		return
+	}
+
 	gridID := body.GridID
 	gridRegion := body.GridRegion
 	gridStartAuto := strconv.FormatBool(body.StartAutomatically)
 
-	message := &natsMessage{ID: testID, Cmd: "/ansible/deployTest.sh", Params: []string{scriptID, scriptFilename, gridID, gridRegion, gridStartAuto}, DeploymentType: "Test"}
+	params := map[string]string{
+		"GRID_NAME":      gridID,
+		"GRID_REGION":    gridRegion,
+		"GRID_AUTOSTART": gridStartAuto,
+		"SCRIPT_ID":      scriptID,
+		"LOCUST_COUNT":   locustConfig.Clients,
+		"HATCH_RATE":     locustConfig.HatchRate,
+		"SCRIPT_KEY":     scriptFilename,
+		"DEPLOYMENT":"true",
+	}
+	message := &natsMessage{ID: testID, params, DeploymentType: "Test"}
 	b, err := json.Marshal(message)
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("Not publishing nats message. Failed to convert to json: %v", err.Error())))
@@ -238,8 +254,13 @@ func CancelTestDeployment(w http.ResponseWriter, r *http.Request, ps httprouter.
 		w.Write([]byte("Failed to send stop command for: " + testID + " " + err.Error()))
 		return
 	}
+	params := map[string]string{
+		"GRID_NAME":   gridID,
+		"GRID_REGION": gridRegion,
+		"DESTROY_DEPLOYMENT":"true",
+	}
 
-	message := &natsMessage{ID: testID, DeploymentType: "Test", Params: []string{gridID}}
+	message := &natsMessage{ID: testID, DeploymentType: "Test", Params: params}
 	b, err := json.Marshal(message)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -297,7 +318,12 @@ func StopTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func stopTest(gridID string, gridRegion string, testID string, deploymentType string) error {
-	message := &natsMessage{ID: gridID, Cmd: "/ansible/gridCleanup.sh", Params: []string{gridID, gridRegion, testID}, DeploymentType: deploymentType}
+	params := map[string]string{
+		"GRID_NAME":   gridID,
+		"GRID_REGION": gridRegion,
+		"DESTROY_DEPLOYMENT":"true",
+	}
+	message := &natsMessage{ID: gridID, DeploymentType: "Test", Params: params, DeploymentType: deploymentType}
 
 	b, err := json.Marshal(message)
 	if err != nil {

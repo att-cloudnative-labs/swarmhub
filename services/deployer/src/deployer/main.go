@@ -15,19 +15,24 @@ import (
 )
 
 var (
-	cmdMap = make(map[string]*CommandStruct)
-	natsUsername string
-	natsPassword string
-	natsURL string
-	clusterID string
-	startCmdMutex = &sync.Mutex{}
-	message = make(chan string)
-	sc stan.Conn
-	subCmdStart stan.Subscription
+	cmdMap          = make(map[string]*CommandStruct)
+	natsUsername    string
+	natsPassword    string
+	natsURL         string
+	clusterID       string
+	startCmdMutex   = &sync.Mutex{}
+	message         = make(chan string)
+	sc              stan.Conn
+	subCmdStart     stan.Subscription
 	subDeployerStop stan.Subscription
+	scriptPath      string
 )
 
-
+const (
+	scriptName = "setup.sh"
+	gridID     = "GRID_NAME"
+	testID     = "TEST_ID"
+)
 
 type CommandStruct struct {
 	ID               string
@@ -49,15 +54,14 @@ type CommandOutput struct {
 type Deployment struct {
 	ID             string
 	DeploymentType string
-	Cmd            string
-	Params         []string
+	Params         map[string]string
 }
 
 type DeploymentStatus struct {
 	ID             string
 	DeploymentType string
 	Status         string
-	Params         []string
+	Params         map[string]string
 }
 
 func loadNatsFromEnv() {
@@ -88,6 +92,15 @@ func init() {
 }
 
 func main() {
+	scriptPath = os.Getenv("SCRIPT_DIR_PATH")
+	if scriptPath == "" {
+		fmt.Printf("Script path not set.")
+		os.Exit(2)
+	}
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		fmt.Printf("Script doesn not exist.")
+		os.Exit(2)
+	}
 	hostname, err := os.Hostname()
 	if err != nil {
 		fmt.Printf("Failed to get Hostname: %v\n", err)
@@ -141,8 +154,8 @@ func messageStartHandler(msg *stan.Msg) {
 	if err != nil {
 		fmt.Println("failed to unmarshal msg.Data: ", err.Error())
 	}
-
-	StartCmdJob(startMsg.Cmd, startMsg.Params, startMsg.ID, startMsg.DeploymentType)
+	fmt.Println("script path", scriptPath+"/"+scriptName)
+	StartCmdJob(scriptPath+"/"+scriptName, startMsg.Params, startMsg.ID, startMsg.DeploymentType)
 
 	fmt.Println("Finished running commands on start message ", startMsg.ID)
 	startCmdMutex.Unlock()
@@ -169,7 +182,7 @@ func startCmd(sc stan.Conn) {
 	}
 }
 
-func StartCmdJob(command string, parameters []string, id string, deploymentType string) {
+func StartCmdJob(command string, parameters map[string]string, id string, deploymentType string) {
 	runCommand(command, parameters, id, deploymentType)
 }
 
@@ -194,7 +207,7 @@ func stopCmdJob(id string) {
 	return
 }
 
-func runCommand(command string, parameters []string, id string, deploymentType string) error {
+func runCommand(command string, parameters map[string]string, id string, deploymentType string) error {
 	var err error
 
 	if _, ok := cmdMap[id]; ok {
@@ -207,11 +220,14 @@ func runCommand(command string, parameters []string, id string, deploymentType s
 	cmdMap[id] = &data
 
 	data.ID = id
-	data.cmd = exec.Command(command, parameters...)
+	data.cmd = exec.Command(command)
 	// SysProcAttr being used to run commands as root
 	//cmd.SysProcAttr = &syscall.SysProcAttr{}
 	//cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 0, Gid: 0}
 	data.cmd.Env = os.Environ()
+	for key, val := range parameters {
+		data.cmd.Env = append(data.cmd.Env, key+"="+val)
+	}
 	data.OutputStream, err = data.cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -280,30 +296,17 @@ func runCommand(command string, parameters []string, id string, deploymentType s
 	return err
 }
 
-func updateInitialDeploymentStatus(id string, deploymentType string, parameters []string) error {
+func updateInitialDeploymentStatus(id string, deploymentType string, parameters map[string]string) error {
 	var statusUpdates []DeploymentStatus
 	switch deploymentType {
 	case "Grid", "Test":
 		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deploying"}
 		statusUpdates = append(statusUpdates, status)
 	case "StopTest":
-		// if there is a grid associated to the deployment mark it as cleaning
-		if len(parameters) > 0 && parameters[0] != "" {
-			gridID := parameters[0]
-			status := DeploymentStatus{ID: gridID, DeploymentType: "Grid", Status: "Cleaning"}
-			statusUpdates = append(statusUpdates, status)
-		}
-		if len(parameters) > 2 && parameters[2] != "" {
-			testID := parameters[2]
-			status := DeploymentStatus{ID: testID, DeploymentType: "Test", Status: "Stopping"}
-			statusUpdates = append(statusUpdates, status)
-		}
+		statusUpdates = append(statusUpdates, DeploymentStatus{ID: parameters[gridID], DeploymentType: "Grid", Status: "Cleaning"})
+		statusUpdates = append(statusUpdates, DeploymentStatus{ID: parameters[gridID], DeploymentType: "Test", Status: "Stopping"})
 	case "CancelTest":
-		if len(parameters) > 0 && parameters[0] != "" {
-			gridID := parameters[0]
-			status := DeploymentStatus{ID: gridID, DeploymentType: "Grid", Status: "Cleaning"}
-			statusUpdates = append(statusUpdates, status)
-		}
+		statusUpdates = append(statusUpdates, DeploymentStatus{ID: parameters[gridID], DeploymentType: "Grid", Status: "Cleaning"})
 	case "GridCleanup":
 		status := DeploymentStatus{ID: id, DeploymentType: "Grid", Status: "Cleaning"}
 		statusUpdates = append(statusUpdates, status)
@@ -319,7 +322,7 @@ func updateInitialDeploymentStatus(id string, deploymentType string, parameters 
 	return nil
 }
 
-func updateFinalDeploymentStatus(id string, deploymentType string, parameters []string) error {
+func updateFinalDeploymentStatus(id string, deploymentType string, parameters map[string]string) error {
 	var statusUpdates []DeploymentStatus
 	switch deploymentType {
 	case "Grid":
@@ -329,25 +332,10 @@ func updateFinalDeploymentStatus(id string, deploymentType string, parameters []
 		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deployed"}
 		statusUpdates = append(statusUpdates, status)
 	case "StopTest":
-		// if there is a grid associated to the deployment mark it available
-		if len(parameters) > 0 && parameters[0] != "" {
-			gridID := parameters[0]
-			status := DeploymentStatus{ID: gridID, DeploymentType: "Grid", Status: "Available"}
-			statusUpdates = append(statusUpdates, status)
-		}
-
-		if len(parameters) > 2 && parameters[2] != "" {
-			testID := parameters[2]
-			status := DeploymentStatus{ID: testID, DeploymentType: "Test", Status: "Stopped"}
-			statusUpdates = append(statusUpdates, status)
-		}
+		statusUpdates = append(statusUpdates, DeploymentStatus{ID: parameters[gridID], DeploymentType: "Grid", Status: "Available"})
+		statusUpdates = append(statusUpdates, DeploymentStatus{ID: parameters[testID], DeploymentType: "Test", Status: "Stopped"})
 	case "CancelTest":
-		// if there is a grid associated to the deployment mark it available
-		if len(parameters) > 0 && parameters[0] != "" {
-			gridID := parameters[0]
-			status := DeploymentStatus{ID: gridID, DeploymentType: "Grid", Status: "Available"}
-			statusUpdates = append(statusUpdates, status)
-		}
+		statusUpdates = append(statusUpdates, DeploymentStatus{ID: parameters[gridID], DeploymentType: "Grid", Status: "Available"})
 	case "GridCleanup":
 		status := DeploymentStatus{ID: id, DeploymentType: "Grid", Status: "Available"}
 		statusUpdates = append(statusUpdates, status)
