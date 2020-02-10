@@ -27,7 +27,7 @@ func CreateLocustConfig(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		return
 	}
 
-	json, err := json.Marshal(locustConfig)
+	jsonData, err := json.Marshal(locustConfig)
 	if err != nil {
 		message := fmt.Sprintf("error gettig locust config result: " + err.Error())
 		http.Error(w, message, http.StatusInternalServerError)
@@ -39,7 +39,7 @@ func CreateLocustConfig(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Write(json)
+	w.Write(jsonData)
 }
 
 func GetLocustConfigByTestId(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -51,7 +51,7 @@ func GetLocustConfigByTestId(w http.ResponseWriter, r *http.Request, ps httprout
 		return
 	}
 
-	json, err := json.Marshal(locustConfig)
+	jsonData, err := json.Marshal(locustConfig)
 	if err != nil {
 		message := fmt.Sprintf("error gettig locust config result: " + err.Error())
 		http.Error(w, message, http.StatusInternalServerError)
@@ -60,7 +60,7 @@ func GetLocustConfigByTestId(w http.ResponseWriter, r *http.Request, ps httprout
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(json)
+	w.Write(jsonData)
 }
 
 func UpdateLocustConfig(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
