@@ -27,7 +27,7 @@ func CreateGridTemplate(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		return
 	}
 
-	json, err := json.Marshal(gridTemplate)
+	jsonData, err := json.Marshal(gridTemplate)
 	if err != nil {
 		message := fmt.Sprintf("error gettig grid template result: " + err.Error())
 		http.Error(w, message, http.StatusInternalServerError)
@@ -36,7 +36,7 @@ func CreateGridTemplate(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Write(json)
+	w.Write(jsonData)
 }
 
 func GetAllGridTemplates(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -51,7 +51,7 @@ func GetAllGridTemplates(w http.ResponseWriter, r *http.Request, ps httprouter.P
 		return
 	}
 
-	json, err := json.Marshal(gridTemplates)
+	jsonData, err := json.Marshal(gridTemplates)
 	if err != nil {
 		message := fmt.Sprintf("error parsing grid templates result: " + err.Error())
 		http.Error(w, message, http.StatusInternalServerError)
@@ -60,7 +60,7 @@ func GetAllGridTemplates(w http.ResponseWriter, r *http.Request, ps httprouter.P
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(json)
+	w.Write(jsonData)
 }
 
 func GetGridTemplateById(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -72,7 +72,7 @@ func GetGridTemplateById(w http.ResponseWriter, r *http.Request, ps httprouter.P
 		return
 	}
 
-	json, err := json.Marshal(gridTemplate)
+	jsonData, err := json.Marshal(gridTemplate)
 	if err != nil {
 		message := fmt.Sprintf("error parsing grid templates result: " + err.Error())
 		http.Error(w, message, http.StatusInternalServerError)
@@ -81,7 +81,7 @@ func GetGridTemplateById(w http.ResponseWriter, r *http.Request, ps httprouter.P
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(json)
+	w.Write(jsonData)
 }
 
 func UpdateGridTemplate(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
