@@ -345,9 +345,7 @@ func DeleteGridByID(id string) error {
 
 }
 
-func GetGridByID(id string) ([]byte, error) {
-	var b []byte
-
+func GetGridById(id string) (GridStruct, error) {
 	sqlString := `SELECT g.id, g.name, gs.status, g.ttl, p.name, r.region, vm.name, vs.name, nodes FROM portal.grid g 
 	 INNER JOIN portal.providers p ON g.provider_id = p.id 
 	 INNER JOIN portal.provider_regions r ON g.region_id = r.id 
@@ -357,33 +355,14 @@ func GetGridByID(id string) ([]byte, error) {
 	 WHERE g.id=$1
 	 ORDER BY g.created DESC`
 
-	type gridStruct struct {
-		ID       string
-		Name     string
-		Status   string
-		TTL      string
-		Provider string
-		Region   string
-		Master   string
-		Slave    string
-		Nodes    string
-	}
-
-	var grid gridStruct
-
+	var grid GridStruct
 	err := db.QueryRow(sqlString, id).Scan(&grid.ID, &grid.Name, &grid.Status, &grid.TTL, &grid.Provider, &grid.Region, &grid.Master, &grid.Slave, &grid.Nodes)
 	if err != nil {
-		fmt.Println(err)
-		return b, err
+		fmt.Println("error getting grid: ", err)
+		return grid, err
 	}
 
-	b, err = json.Marshal(grid)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return b, err
-
+	return grid, nil
 }
 
 func GetFirstGrid() (string, error) {

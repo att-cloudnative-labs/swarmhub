@@ -20,16 +20,9 @@ var (
 )
 
 func validateCanRunGrid(id string) (bool, error) {
-	var grid db.GridStruct
-	gridBytes, err := db.GetGridByID(id)
+	grid, err := db.GetGridById(id)
 	if err != nil {
-		fmt.Println("Unable to get test by ID: ", err.Error())
-		return false, err
-	}
-
-	err = json.Unmarshal(gridBytes, &grid)
-	if err != nil {
-		fmt.Println("Error unmarshalling grid: ", err.Error())
+		fmt.Println("Unable to validate if grid can run: ", err.Error())
 		return false, err
 	}
 
@@ -41,16 +34,9 @@ func validateCanRunGrid(id string) (bool, error) {
 }
 
 func StartGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	var grid db.GridStruct
 	id := ps.ByName("id")
 
-	gridBytes, err := db.GetGridByID(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = json.Unmarshal(gridBytes, &grid)
+	grid, err := db.GetGridById(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -108,14 +94,14 @@ func StartGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	return
 }
-func stopGrid(id string) error {
+
+func stopGrid(grid db.GridStruct) error {
 	params := map[string]string{
-		"GRID_NAME":   id,
-		"GRID_REGION": gridRegion,
+		"GRID_REGION": grid.Region,
 		"PROVIDER":    strings.ToLower(grid.Provider),
 		"DESTROY":     "true",
 	}
-	message := &natsMessage{ID: id, Params: params, DeploymentType: "Grid"}
+	message := &natsMessage{ID: grid.ID, Params: params, DeploymentType: "Grid"}
 	b, err := json.Marshal(message)
 	if err != nil {
 		fmt.Println("Not publishing nats message. Failed to convert to json: ", err.Error())
@@ -123,7 +109,7 @@ func stopGrid(id string) error {
 	}
 	err = sendStopCmd(b)
 	if err != nil {
-		fmt.Println("Failed to send stop command for grid: " + id)
+		fmt.Println("Failed to send stop command for grid: " + grid.ID)
 		return err
 	}
 
@@ -132,12 +118,21 @@ func stopGrid(id string) error {
 
 // incomplete
 func StopGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	err := stopGrid(ps.ByName("id"))
+	id := ps.ByName("id")
+
+	grid, err := db.GetGridById(id)
 	if err != nil {
-		w.Write([]byte("Failed to perform StopGrid: " + ps.ByName("id")))
+		message := fmt.Sprintf("Error stopping grid: " + err.Error())
+		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
-	w.Write([]byte("sent a stop command for grid id: " + ps.ByName("id")))
+
+	err = stopGrid(grid)
+	if err != nil {
+		w.Write([]byte("Failed to perform StopGrid: " + id))
+		return
+	}
+	w.Write([]byte("sent a stop command for grid id: " + id))
 	return
 }
 
@@ -173,18 +168,25 @@ func Grids(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func Grid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	grid, err := db.GetGridByID(ps.ByName("id"))
+	grid, err := db.GetGridById(ps.ByName("id"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	jsonData, err := json.Marshal(grid)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(grid)
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
 }
 
 func DeleteGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	status, err := db.GetGridStatus(ps.ByName("id"))
+	id := ps.ByName("id")
+	status, err := db.GetGridStatus(id)
 	if err != nil {
 		err = fmt.Errorf("unable to extract the id from Deletegrid function: %v", err)
 		fmt.Println(err)
@@ -199,7 +201,14 @@ func DeleteGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// the test and the grid
 
 	if status == "Deploying" {
-		err := stopGrid(ps.ByName("id"))
+		grid, err := db.GetGridById(id)
+		if err != nil {
+			message := fmt.Sprintf("Error deleting grid: " + err.Error())
+			http.Error(w, message, http.StatusInternalServerError)
+			return
+		}
+
+		err = stopGrid(grid)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -207,14 +216,14 @@ func DeleteGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 
 	if status == "Deployed" || status == "Deploying" || status == "Available" {
-		err := deleteDeployedGrid(ps.ByName("id"))
+		err := deleteDeployedGrid(id)
 		// TODO: "This is a test to see if it prints."
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		err = db.DeleteGridByID(ps.ByName("id"))
+		err = db.DeleteGridByID(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
