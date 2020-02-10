@@ -23,8 +23,7 @@ var stanClusterID string
 
 type natsMessage struct {
 	ID             string
-	Cmd            string
-	Params         []string
+	Params         map[string]string
 	DeploymentType string
 }
 
@@ -32,7 +31,7 @@ type deploymentStatus struct {
 	ID             string
 	DeploymentType string
 	Status         string
-	Params         []string
+	Params         map[string]string
 }
 
 func loadNatsSettings(conf *viper.Viper) {

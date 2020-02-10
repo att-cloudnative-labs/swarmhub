@@ -151,6 +151,16 @@ func GetAllInstanceTypes() ([]byte, error) {
 	return b, nil
 }
 
+func GetInstanceCore(region, instance_type string) (int, error) {
+	row := db.QueryRow("select size from portal.region_vm_sizes where name = $1 AND provider_region = $2", instance_type, region)
+	var size int
+	if err := row.Scan(&size); err != nil {
+		fmt.Println(err)
+		return size, err
+	}
+	return size, nil
+}
+
 func CreateGrid(name string, provider string, region string, masterInstance string, slaveInstance string, slaveNumber int, ttl int, user string) {
 
 	sql := `INSERT INTO portal.grid (name, status_id, health_id, created_by_user, last_edited_user, ttl,
