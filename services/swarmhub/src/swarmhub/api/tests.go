@@ -5,9 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/storage"
 	"io"
 	"log"
 	"net/http"
@@ -15,6 +12,10 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/storage"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -77,7 +78,7 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	locustConfig, err := db.GetLocustConfigByTestId(testId)
+	locustConfig, err := db.GetLocustConfigByTestId(testID)
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("Unable to get locust config %v", err.Error())))
 		return
@@ -92,12 +93,12 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		"GRID_REGION":    gridRegion,
 		"GRID_AUTOSTART": gridStartAuto,
 		"SCRIPT_ID":      scriptID,
-		"LOCUST_COUNT":   locustConfig.Clients,
-		"HATCH_RATE":     locustConfig.HatchRate,
+		"LOCUST_COUNT":   fmt.Sprint(locustConfig.Clients),
+		"HATCH_RATE":     fmt.Sprint(locustConfig.HatchRate),
 		"SCRIPT_KEY":     scriptFilename,
-		"DEPLOYMENT":"true",
+		"DEPLOYMENT":     "true",
 	}
-	message := &natsMessage{ID: testID, params, DeploymentType: "Test"}
+	message := &natsMessage{ID: testID, Params: params, DeploymentType: "Test"}
 	b, err := json.Marshal(message)
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("Not publishing nats message. Failed to convert to json: %v", err.Error())))
@@ -255,9 +256,9 @@ func CancelTestDeployment(w http.ResponseWriter, r *http.Request, ps httprouter.
 		return
 	}
 	params := map[string]string{
-		"GRID_NAME":   gridID,
-		"GRID_REGION": gridRegion,
-		"DESTROY_DEPLOYMENT":"true",
+		"GRID_NAME":          gridID,
+		"GRID_REGION":        gridRegion,
+		"DESTROY_DEPLOYMENT": "true",
 	}
 
 	message := &natsMessage{ID: testID, DeploymentType: "Test", Params: params}
@@ -319,11 +320,11 @@ func StopTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 func stopTest(gridID string, gridRegion string, testID string, deploymentType string) error {
 	params := map[string]string{
-		"GRID_NAME":   gridID,
-		"GRID_REGION": gridRegion,
-		"DESTROY_DEPLOYMENT":"true",
+		"GRID_NAME":          gridID,
+		"GRID_REGION":        gridRegion,
+		"DESTROY_DEPLOYMENT": "true",
 	}
-	message := &natsMessage{ID: gridID, DeploymentType: "Test", Params: params, DeploymentType: deploymentType}
+	message := &natsMessage{ID: gridID, Params: params, DeploymentType: deploymentType}
 
 	b, err := json.Marshal(message)
 	if err != nil {

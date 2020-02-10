@@ -14,6 +14,11 @@ import (
 var PaginationItems = 10
 var ShuttingDown bool
 
+const (
+	KeyGridID = "GRID_NAME"
+	KeyTestID = "TEST_ID"
+)
+
 type DeploymentLog struct {
 	ID         string
 	StreamType string

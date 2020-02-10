@@ -151,7 +151,7 @@ func updateDeployerStatus(m *stan.Msg) {
 			return
 		}
 		gridID := deployedStatus.ID
-		testID := deployedStatus.Params[0]
+		testID := deployedStatus.Params[KeyTestID]
 		db.UpdateGridStatus(gridID, deployedStatus.Status)
 		db.UpdateTestStatus(testID, deployedStatus.Status)
 	} else {
@@ -181,7 +181,7 @@ func createGrafanaSnapshot(m *stan.Msg) {
 		testID = deployedStatus.ID
 		status = deployedStatus.Status
 	case "StopTest":
-		testID = deployedStatus.Params[0]
+		testID = deployedStatus.Params[KeyTestID]
 		status = "Stopped"
 	case "Grid":
 		if !(deployedStatus.Status == "Deleted" || deployedStatus.Status == "expired") {
