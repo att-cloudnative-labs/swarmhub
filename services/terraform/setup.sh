@@ -138,7 +138,7 @@ elif [ "$PROVISION" = "true" ]; then
         -backend-config="region=$AWS_S3_REGION" \
         -input=false
     if [ $? -ne 0 ]; then
-        $WORKSPACE_DIR/$DIR/provision/$PROVIDER
+        cd $WORKSPACE_DIR/$DIR/provision/$PROVIDER
         undo "provision_args"
         aws s3 rm s3://$AWS_S3_BUCKET_TFSTATE/$KEY_BASE-PROVISION
         exitf 'failed to init terraform backend for bootstrap'
@@ -149,8 +149,10 @@ elif [ "$PROVISION" = "true" ]; then
         -var="bucket_tfstate=$AWS_S3_BUCKET_TFSTATE" \
         -var="bucket_region=$AWS_S3_REGION"
     if [ $? -ne 0 ]; then
+        cd $WORKSPACE_DIR/$DIR/provision/$PROVIDER
         undo "provision_args"
         aws s3 rm s3://$AWS_S3_BUCKET_TFSTATE/$KEY_BASE-PROVISION
+        aws s3 rm s3://$AWS_S3_BUCKET_TFSTATE/$KEY_BASE-BOOTSTRAP
         exitf 'failed to bootstrap grid'
     fi
 
