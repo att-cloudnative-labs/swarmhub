@@ -1,9 +1,9 @@
 package api
 
 import (
-	"net/http"
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/ec2"
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
+	"net/http"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -11,6 +11,7 @@ import (
 func SetRouterPaths(router *httprouter.Router) {
 	router.GET("/api/test/:id/attachment/:attachmentid", TokenApiAuth(GetTestAttachment))
 	router.GET("/api/grafana/info", TokenApiAuth(GrafanaConfigs))
+	router.POST("/api/grafana/snapshot", TokenApiAuth(GenerateGrafanaSnapshotHandler))
 	router.GET("/api/test/:id/attachments", TokenApiAuth(TestAttachments))
 	router.POST("/api/grid/:id/start", PowerTokenAPIAuth(StartGrid))
 	router.POST("/api/test/:id/edit", PowerTokenAPIAuth(EditTest))
@@ -53,6 +54,9 @@ func SetRouterPaths(router *httprouter.Router) {
 	router.GET("/api/grid_template/:id", TokenApiAuth(GetGridTemplateById))
 	router.PUT("/api/grid_template/:id", TokenApiAuth(UpdateGridTemplate))
 	router.DELETE("/api/grid_template/:id", TokenApiAuth(DeleteGridTemplate))
+	router.POST("/api/locust_config", TokenApiAuth(CreateLocustConfig))
+	router.PUT("/api/locust_config/:id", TokenApiAuth(UpdateLocustConfig))
+	router.GET("/api/test/:id/locust_config", TokenApiAuth(GetLocustConfigByTestId))
 }
 
 func TokenApiAuth(handler httprouter.Handle) httprouter.Handle {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
@@ -19,16 +20,9 @@ var (
 )
 
 func validateCanRunGrid(id string) (bool, error) {
-	var grid db.GridStruct
-	gridBytes, err := db.GetGridByID(id)
+	grid, err := db.GetGridById(id)
 	if err != nil {
-		fmt.Println("Unable to get test by ID: ", err.Error())
-		return false, err
-	}
-
-	err = json.Unmarshal(gridBytes, &grid)
-	if err != nil {
-		fmt.Println("Error unmarshalling grid: ", err.Error())
+		fmt.Println("Unable to validate if grid can run: ", err.Error())
 		return false, err
 	}
 
@@ -40,16 +34,9 @@ func validateCanRunGrid(id string) (bool, error) {
 }
 
 func StartGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	var grid db.GridStruct
 	id := ps.ByName("id")
 
-	gridBytes, err := db.GetGridByID(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = json.Unmarshal(gridBytes, &grid)
+	grid, err := db.GetGridById(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -73,8 +60,27 @@ func StartGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
+	slaveCore, err := db.GetInstanceCore(grid.Region, grid.Slave)
+	if err != nil {
+		// Print error but continue on
+		fmt.Printf("Failed to get slave core %v\n", err)
+	}
+
 	ttlEpoch := strconv.FormatInt(time.Now().Add(time.Minute*time.Duration(ttl)).Unix(), 10)
-	message := &natsMessage{ID: grid.ID, Cmd: "/ansible/gridProvision.sh", Params: []string{grid.ID, grid.Region, grid.Master, grid.Slave, grid.Nodes, ttlEpoch, LocustMasterSecurityGroups, LocustSlaveSecurityGroups}, DeploymentType: "Grid"}
+	params := map[string]string{
+		"GRID_ID":                      grid.ID,
+		"GRID_REGION":                  grid.Region,
+		"MASTER_INSTANCE":              grid.Master,
+		"SLAVE_INSTANCE":               grid.Slave,
+		"SLAVE_INSTANCE_CORE":          strconv.Itoa(slaveCore),
+		"SLAVE_INSTANCE_COUNT":         grid.Nodes,
+		"PROVIDER":                     strings.ToLower(grid.Provider),
+		"TTL":                          ttlEpoch,
+		"LOCUST_MASTER_SECURITY_GROUP": LocustMasterSecurityGroups,
+		"LOCUST_SLAVE_SECURITY_GROUP":  LocustSlaveSecurityGroups,
+		"PROVISION":                    "true",
+	}
+	message := &natsMessage{ID: grid.ID, Params: params, DeploymentType: "Grid"}
 	b, err := json.Marshal(message)
 	if err != nil {
 		fmt.Println("Not publishing nats message. Failed to convert to json: ", err.Error())
@@ -88,6 +94,7 @@ func StartGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	return
 }
+
 func stopGrid(id string) error {
 	message := &natsMessage{ID: id, DeploymentType: "Grid"}
 	b, err := json.Marshal(message)
@@ -98,6 +105,28 @@ func stopGrid(id string) error {
 	err = sendStopCmd(b)
 	if err != nil {
 		fmt.Println("Failed to send stop command for grid: " + id)
+		return err
+	}
+
+	return nil
+}
+
+func deleteGrid(grid db.GridStruct) error {
+	params := map[string]string{
+		"GRID_REGION": grid.Region,
+		"GRID_ID":     grid.ID,
+		"PROVIDER":    strings.ToLower(grid.Provider),
+		"DESTROY":     "true",
+	}
+	message := &natsMessage{ID: grid.ID, Params: params, DeploymentType: "DeleteGrid"}
+	b, err := json.Marshal(message)
+	if err != nil {
+		fmt.Println("Not publishing nats message. Failed to convert to json: ", err.Error())
+		return err
+	}
+	err = sendStartCmd(b)
+	if err != nil {
+		fmt.Println("Failed to send delete command for grid: " + grid.ID)
 		return err
 	}
 
@@ -147,18 +176,25 @@ func Grids(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func Grid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	grid, err := db.GetGridByID(ps.ByName("id"))
+	grid, err := db.GetGridById(ps.ByName("id"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	jsonData, err := json.Marshal(grid)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(grid)
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
 }
 
 func DeleteGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	status, err := db.GetGridStatus(ps.ByName("id"))
+	id := ps.ByName("id")
+	status, err := db.GetGridStatus(id)
 	if err != nil {
 		err = fmt.Errorf("unable to extract the id from Deletegrid function: %v", err)
 		fmt.Println(err)
@@ -173,22 +209,31 @@ func DeleteGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// the test and the grid
 
 	if status == "Deploying" {
-		err := stopGrid(ps.ByName("id"))
+		message := fmt.Sprintf("Grid is being deployed")
+		http.Error(w, message, http.StatusProcessing)
+		return
+		/* grid, err := db.GetGridById(id)
+		if err != nil {
+			message := fmt.Sprintf("Error deleting grid: " + err.Error())
+			http.Error(w, message, http.StatusInternalServerError)
+			return
+		}
+
+		err = stopGrid(grid)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
+		} */
 	}
 
-	if status == "Deployed" || status == "Deploying" || status == "Available" {
-		err := deleteDeployedGrid(ps.ByName("id"))
+	if status == "Deployed" || status == "Available" {
+		err := deleteDeployedGrid(id)
 		// TODO: "This is a test to see if it prints."
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	} else {
-		err = db.DeleteGridByID(ps.ByName("id"))
+		err = db.DeleteGridByID(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -199,7 +244,7 @@ func DeleteGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func deleteDeployedGrid(id string) error {
-	region, err := db.GetGridRegion(id)
+	grid, err := db.GetGridById(id)
 	if err != nil {
 		fmt.Println("Unable to extract the id from Deletegrid function", err.Error())
 		return err
@@ -212,7 +257,7 @@ func deleteDeployedGrid(id string) error {
 		Status         string
 	}
 
-	status := message{ID: id, DeploymentType: "Grid", Region: region, Status: "Deleting"}
+	status := message{ID: id, DeploymentType: "Grid", Region: grid.Region, Status: "Deleting"}
 	statusMsg, err := json.Marshal(status)
 	if err != nil {
 		fmt.Println("Failed to convert json: ", err.Error())
@@ -220,6 +265,11 @@ func deleteDeployedGrid(id string) error {
 	err = sc.Publish("deployer.status", statusMsg)
 	if err != nil {
 		fmt.Println("Was unable to update test status! ", err.Error())
+		return err
+	}
+
+	err = deleteGrid(grid)
+	if err != nil {
 		return err
 	}
 

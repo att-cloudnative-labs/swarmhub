@@ -69,7 +69,7 @@ func storageSet() {
 	accessKey := Registry.GetString("AWS_S3_ACCESS_KEY")
 	secretAccessKey := Registry.GetString("AWS_S3_SECRET_ACCESS_KEY")
 	region := Registry.GetString("AWS_S3_REGION")
-	bucket := Registry.GetString("AWS_S3_BUCKET")
+	bucket := Registry.GetString("AWS_S3_BUCKET_LOCUSTFILES")
 
 	err := storage.SetS3(accessKey, secretAccessKey, region, bucket)
 	if err != nil {

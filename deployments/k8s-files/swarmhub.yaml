@@ -36,10 +36,10 @@ spec:
             secretKeyRef:
               key: jwt-key
               name: jwt-key
-        - name: AWS_S3_BUCKET
+        - name: AWS_S3_BUCKET_LOCUSTFILES
           valueFrom:
             secretKeyRef:
-              key: aws_s3_bucket
+              key: aws_s3_bucket_locustfiles
               name: cloud-credentials
         - name: AWS_S3_SECRET_ACCESS_KEY
           valueFrom:

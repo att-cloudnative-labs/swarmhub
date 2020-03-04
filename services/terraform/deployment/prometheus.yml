@@ -1,0 +1,86 @@
+global:
+  evaluation_interval: 1m
+  scrape_interval: 1m
+  scrape_timeout: 10s
+
+scrape_configs:
+- job_name: locust
+  ec2_sd_configs:
+  - access_key: ${var.access_key}
+    filters:
+    - name: tag:role
+      values:
+      - locust-master
+    port: 80
+    region: ${var.grid_region}
+    secret_key: ${var.secret_key}
+  metrics_path: /metrics
+
+  #relabel_configs:
+  #- source_labels: [__meta_ec2_public_ip]
+  #  regex:  (.*)
+  #  target_label: __address__
+  #  replacement: ${1}:80
+
+- job_name: locust-nodeport
+  ec2_sd_configs:
+  - access_key: ${var.access_key}
+    filters:
+    - name: tag:role
+      values:
+      - locust-master
+    port: 30000
+    region: ${var.grid_region}
+    secret_key: ${var.secret_key}
+  metrics_path: /metrics
+
+  #relabel_configs:
+  #- source_labels: [__meta_ec2_public_ip]
+  #  regex:  (.*)
+  #  target_label: __address__
+  #  replacement: ${1}:30000
+
+- job_name: kubernetes-service-endpoints
+  kubernetes_sd_configs:
+  - role: endpoints
+  relabel_configs:
+  - action: keep
+    regex: true
+    source_labels:
+    - __meta_kubernetes_service_annotation_prometheus_io_scrape
+  - action: replace
+    regex: (https?)
+    source_labels:
+    - __meta_kubernetes_service_annotation_prometheus_io_scheme
+    target_label: __scheme__
+  - action: replace
+    regex: (.+)
+    source_labels:
+    - __meta_kubernetes_service_annotation_prometheus_io_path
+    target_label: __metrics_path__
+  - action: replace
+    regex: ([^:]+)(?::\d+)?;(\d+)
+    replacement: $1:$2
+    source_labels:
+    - __address__
+    - __meta_kubernetes_service_annotation_prometheus_io_port
+    target_label: __address__
+  - action: labelmap
+    regex: __meta_kubernetes_service_label_(.+)
+  - action: replace
+    source_labels:
+    - __meta_kubernetes_namespace
+    target_label: kubernetes_namespace
+  - action: replace
+    source_labels:
+    - __meta_kubernetes_service_name
+    target_label: kubernetes_name
+  - action: replace
+    source_labels:
+    - __meta_kubernetes_pod_node_name
+    target_label: kubernetes_node
+
+- job_name: prometheus
+  static_configs:
+  - targets:
+    - localhost:9090

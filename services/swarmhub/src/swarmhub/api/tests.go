@@ -9,11 +9,13 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/db"
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
 	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/storage"
-	"strconv"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -70,9 +72,15 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 
 	testID := ps.ByName("id")
-	scriptID, scriptFilename, err := db.GetScriptFilename(testID)
+	scriptID, scriptFileName, err := db.GetScriptFilename(testID)
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("Unable to get script filename %v", err.Error())))
+		return
+	}
+
+	locustConfig, err := db.GetLocustConfigByTestId(testID)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Unable to get locust config %v", err.Error())))
 		return
 	}
 
@@ -80,7 +88,17 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	gridRegion := body.GridRegion
 	gridStartAuto := strconv.FormatBool(body.StartAutomatically)
 
-	message := &natsMessage{ID: testID, Cmd: "/ansible/deployTest.sh", Params: []string{scriptID, scriptFilename, gridID, gridRegion, gridStartAuto}, DeploymentType: "Test"}
+	params := map[string]string{
+		"GRID_ID":          gridID,
+		"GRID_REGION":      gridRegion,
+		"GRID_AUTOSTART":   gridStartAuto,
+		"SCRIPT_ID":        scriptID,
+		"SCRIPT_FILE_NAME": scriptFileName,
+		"LOCUST_COUNT":     fmt.Sprint(locustConfig.Clients),
+		"HATCH_RATE":       fmt.Sprint(locustConfig.HatchRate),
+		"DEPLOYMENT":       "true",
+	}
+	message := &natsMessage{ID: testID, Params: params, DeploymentType: "Test"}
 	b, err := json.Marshal(message)
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("Not publishing nats message. Failed to convert to json: %v", err.Error())))
@@ -213,6 +231,16 @@ func DuplicateTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 		return
 	}
 
+	err = db.DuplicateLocustConfig(testID, newTestID)
+	if err != nil {
+		db.UpdateTestStatus(newTestID, "Missing info")
+		v := result{Status: "Failed", Description: fmt.Sprintf("Failed to duplicate locust config for test %v because %v", testID, err)}
+		jsonResult, _ := json.Marshal(v)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(jsonResult)
+		return
+	}
+
 	v := result{Status: "Success", TestID: newTestID}
 	jsonResult, _ := json.Marshal(v)
 	w.Write(jsonResult)
@@ -227,8 +255,13 @@ func CancelTestDeployment(w http.ResponseWriter, r *http.Request, ps httprouter.
 		w.Write([]byte("Failed to send stop command for: " + testID + " " + err.Error()))
 		return
 	}
+	params := map[string]string{
+		"GRID_ID":            gridID,
+		"GRID_REGION":        gridRegion,
+		"DESTROY_DEPLOYMENT": "true",
+	}
 
-	message := &natsMessage{ID: testID, DeploymentType: "Test", Params: []string{gridID}}
+	message := &natsMessage{ID: testID, DeploymentType: "Test", Params: params}
 	b, err := json.Marshal(message)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -286,7 +319,13 @@ func StopTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func stopTest(gridID string, gridRegion string, testID string, deploymentType string) error {
-	message := &natsMessage{ID: gridID, Cmd: "/ansible/gridCleanup.sh", Params: []string{gridID, gridRegion, testID}, DeploymentType: deploymentType}
+	params := map[string]string{
+		"GRID_ID":            gridID,
+		"GRID_REGION":        gridRegion,
+		"TEST_ID":            testID,
+		"DESTROY_DEPLOYMENT": "true",
+	}
+	message := &natsMessage{ID: testID, Params: params, DeploymentType: deploymentType}
 
 	b, err := json.Marshal(message)
 	if err != nil {
@@ -758,7 +797,15 @@ func CreateTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	go storage.UploadScript(testID, scriptID, testFiles.Name, file)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go storage.UploadScript(testID, scriptID, testFiles.Name, file, &wg)
+	wg.Wait()
+
+	// check if test got locust config
+	if !db.TestWithLocustConfig(testID) {
+		db.UpdateTestStatus(testID, "Missing info")
+	}
 
 	desc := "Looks good, sent off to upload!"
 	resp := response{success, desc}
