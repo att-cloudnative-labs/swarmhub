@@ -23,6 +23,11 @@ import (
 var defaultStart time.Time
 var defaultEnd time.Time
 
+type ReqGrid struct {
+	GridID     string `json:"grid_id"`
+	GridRegion string `json:"grid_region"`
+}
+
 func init() {
 	dateLayout := "2006-01-02 15:04:05"
 	startTimeString := "2000-01-01 00:00:00"
@@ -52,16 +57,6 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	//var body struct {
-	//	GridID             string
-	//	StartAutomatically bool
-	//	GridRegion         string
-	//}
-
-	type ReqGrid struct {
-		GridID     string `json:"grid_id"`
-		GridRegion string `json:"grid_region"`
-	}
 	var reqBody struct {
 		ReqGrids           []ReqGrid `json:"grids"`
 		StartAutomatically bool      `json:"start_automatically"`
@@ -99,6 +94,9 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
+	gridClientsMap := make(map[string]int)
+	DistributeClientsPerGrid(int(locustConfig.Clients), reqBody.ReqGrids, gridClientsMap)
+
 	for _, grid := range reqBody.ReqGrids {
 		gridID := grid.GridID
 		gridRegion, err := db.GetGridRegion(gridID)
@@ -110,7 +108,7 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			"GRID_AUTOSTART":   gridStartAuto,
 			"SCRIPT_ID":        scriptID,
 			"SCRIPT_FILE_NAME": scriptFileName,
-			"LOCUST_COUNT":     fmt.Sprint(locustConfig.Clients),
+			"LOCUST_COUNT":     fmt.Sprint(gridClientsMap[gridID]),
 			"HATCH_RATE":       fmt.Sprint(locustConfig.HatchRate),
 			"DEPLOYMENT":       "true",
 		}
@@ -144,6 +142,28 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 
 	w.Write([]byte("sent a start command for test id: " + ps.ByName("id")))
+}
+
+func DistributeClientsPerGrid(clients int, grids []ReqGrid, gridClientsMap map[string]int) {
+	gridCount := len(grids)
+	clientsPerGrid := make([]int, gridCount)
+
+	perGrid := clients / gridCount
+	remainingUsers := clients % gridCount
+
+	for i := 0; i < gridCount; i++ {
+		clientsPerGrid[i] = perGrid
+	}
+
+	for i := 0; i < remainingUsers; i++ {
+		clientsPerGrid[i] += 1
+	}
+
+	index := 0
+	for _, grid := range grids {
+		gridClientsMap[grid.GridID] = clientsPerGrid[index]
+		index++
+	}
 }
 
 func UploadTestAttachment(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
