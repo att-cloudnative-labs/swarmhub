@@ -61,6 +61,7 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		ReqGrids           []ReqGrid `json:"grids"`
 		StartAutomatically bool      `json:"start_automatically"`
 	}
+	json.NewDecoder(r.Body).Decode(&reqBody)
 
 	for _, reqGrid := range reqBody.ReqGrids {
 		gridReady, err := validateCanRunGrid(reqGrid.GridID)
