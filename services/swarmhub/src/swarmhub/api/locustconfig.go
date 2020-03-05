@@ -84,13 +84,6 @@ func UpdateLocustConfig(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 	testId := locustConfig.TestId
 	if isTestRunning(testId) {
 		// update running test
-		gridID, gridRegion, err := db.GetGridByTestID(testId)
-		if err != nil {
-			message := fmt.Sprintf("error updating a running test: " + err.Error())
-			http.Error(w, message, http.StatusInternalServerError)
-			return
-		}
-
 		scriptID, scriptFileName, err := db.GetScriptFilename(testId)
 		if err != nil {
 			message := fmt.Sprintf("error updating a running test: " + err.Error())
@@ -98,28 +91,48 @@ func UpdateLocustConfig(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 			return
 		}
 
-		params := map[string]string{
-			"GRID_ID":          gridID,
-			"GRID_REGION":      gridRegion,
-			"GRID_AUTOSTART":   "true",
-			"SCRIPT_ID":        scriptID,
-			"SCRIPT_FILE_NAME": scriptFileName,
-			"LOCUST_COUNT":     fmt.Sprint(locustConfig.Clients),
-			"HATCH_RATE":       fmt.Sprint(locustConfig.HatchRate),
-			"DEPLOYMENT":       "true",
-		}
-		message := &natsMessage{ID: testId, Params: params, DeploymentType: "Test"}
-		b, err := json.Marshal(message)
-		if err != nil {
-			w.Write([]byte(fmt.Sprintf("Not publishing nats message. Failed to convert to json: %v", err.Error())))
-			return
-		}
-
-		err = sendStartCmd(b)
+		grids, err := db.GetGridsByTestId(testId)
 		if err != nil {
 			message := fmt.Sprintf("error updating a running test: " + err.Error())
 			http.Error(w, message, http.StatusInternalServerError)
 			return
+		}
+
+		var reqGrids []ReqGrid
+		for _, grid := range grids {
+			var reqGrid ReqGrid
+			reqGrid.GridID = grid.ID
+			reqGrid.GridRegion = grid.Region
+			reqGrids = append(reqGrids, reqGrid)
+		}
+
+		gridClientsMap := make(map[string]int)
+		DistributeClientsPerGrid(int(locustConfig.Clients), reqGrids, gridClientsMap)
+
+		for _, grid := range grids {
+			params := map[string]string{
+				"GRID_ID":          grid.ID,
+				"GRID_REGION":      grid.Region,
+				"GRID_AUTOSTART":   "true",
+				"SCRIPT_ID":        scriptID,
+				"SCRIPT_FILE_NAME": scriptFileName,
+				"LOCUST_COUNT":     fmt.Sprint(gridClientsMap[grid.ID]),
+				"HATCH_RATE":       fmt.Sprint(locustConfig.HatchRate),
+				"DEPLOYMENT":       "true",
+			}
+			message := &natsMessage{ID: testId, Params: params, DeploymentType: "Test"}
+			b, err := json.Marshal(message)
+			if err != nil {
+				w.Write([]byte(fmt.Sprintf("Not publishing nats message. Failed to convert to json: %v", err.Error())))
+				return
+			}
+
+			err = sendStartCmd(b)
+			if err != nil {
+				message := fmt.Sprintf("error updating a running test: " + err.Error())
+				http.Error(w, message, http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 
