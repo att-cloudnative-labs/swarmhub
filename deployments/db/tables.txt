@@ -118,10 +118,6 @@ CREATE TABLE portal.grid (
    nodes INT NOT NULL
 );
 
-ALTER TABLE portal.test ADD COLUMN grid_id UUID; 
-CREATE INDEX ON portal.test (grid_id);
-ALTER TABLE portal.test ADD CONSTRAINT grid_fk FOREIGN KEY (grid_id) REFERENCES portal.grid (id);
-
 CREATE TABLE portal.grid_template (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name STRING NOT NULL,

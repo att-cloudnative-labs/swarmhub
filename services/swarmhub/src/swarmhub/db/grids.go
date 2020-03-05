@@ -251,6 +251,38 @@ func GetGridsByStatus(statusList ...string) ([]byte, error) {
 
 }
 
+func GetGridsByTestId(testId string) ([]GridStruct, error) {
+	var grids []GridStruct
+
+	sql := `SELECT g.id, g.name, gs.status, g.ttl, p.name, r.region, vm.name, vs.name, nodes FROM portal.grid g
+	 INNER JOIN portal.providers p ON g.provider_id = p.id
+	 INNER JOIN portal.provider_regions r ON g.region_id = r.id
+	 INNER JOIN portal.region_vm_sizes vm on g.master_instance_type_id = vm.id
+	 INNER JOIN portal.region_vm_sizes vs on g.slave_instance_type_id = vs.id
+	 INNER JOIN portal.grid_status gs on gs.id = g.status_id
+	 WHERE g.status_id != (SELECT id from portal.grid_status WHERE status='Deleted')
+	 AND test_id=$1`
+
+	rows, err := db.Query(sql, testId)
+	if err != nil {
+		fmt.Println("error getting grids: ", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id, name, status, ttl, provider, region, master, slave, nodes string
+		if err := rows.Scan(&id, &name, &status, &ttl, &provider, &region, &master, &slave, &nodes); err != nil {
+			fmt.Println(err)
+			continue
+		}
+		grids = append(grids, GridStruct{id, name, status, ttl, provider, region,
+			master, slave, nodes})
+	}
+
+	return grids, nil
+}
+
 func GetGrids(limit int) ([]byte, error) {
 	var b []byte
 

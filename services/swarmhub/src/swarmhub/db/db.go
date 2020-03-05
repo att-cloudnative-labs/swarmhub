@@ -110,16 +110,6 @@ func UpdateTestIDinGrid(gridID string, testID string) error {
 		return err
 	}
 
-	if testID == "" || gridID == "" {
-		return nil
-	}
-
-	sqlString = `UPDATE portal.test SET grid_id = $2 WHERE id = $1`
-	_, err = db.Exec(sqlString, testID, gridID)
-	if err != nil {
-		err = fmt.Errorf("unable to update grid_id in a test: %v", err)
-		return err
-	}
 	return nil
 }
 
