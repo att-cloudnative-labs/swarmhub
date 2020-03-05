@@ -119,7 +119,6 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			w.Write([]byte(fmt.Sprintf("Not publishing nats message. Failed to convert to json: %v", err.Error())))
 			return
 		}
-		fmt.Println("command message: ", b)
 
 		err = sendStartCmd(b)
 		if err != nil {
