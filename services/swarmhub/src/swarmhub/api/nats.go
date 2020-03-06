@@ -141,6 +141,9 @@ func updateDeployerStatus(m *stan.Msg) {
 
 	if deployedStatus.DeploymentType == "Test" {
 		db.UpdateTestStatus(deployedStatus.ID, deployedStatus.Status)
+		if deployedStatus.Status == "Error" {
+			db.UpdateGridStatus(deployedStatus.Params["GRID_ID"], "Available")
+		}
 	} else if deployedStatus.DeploymentType == "Grid" || deployedStatus.DeploymentType == "DeleteGrid" {
 		db.UpdateGridStatus(deployedStatus.ID, deployedStatus.Status)
 		updateTestStatusFromGridStatus(deployedStatus.ID, deployedStatus.Status)

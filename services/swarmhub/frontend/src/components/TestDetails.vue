@@ -46,7 +46,7 @@
           <form
             v-if="testIP.Status=='Success'"
             method="post"
-            v-bind:action="'https://' + testIP.IP  + '/login'"
+            v-bind:action="'https://' + testIP.IP  /*+ '/login'*/"
             target="_blank"
           >
             <input type="hidden" id="token" name="authToken" v-bind:value="testIP.Auth" />
