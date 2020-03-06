@@ -226,7 +226,7 @@ func DeleteGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		} */
 	}
 
-	if status == "Deployed" || status == "Available" || status == "Ready" || status == "Error" {
+	if status == "Deployed" || status == "Available" || status == "Ready" || status == "Error" || status == "Expired" {
 		err := deleteDeployedGrid(id)
 		// TODO: "This is a test to see if it prints."
 		if err != nil {
