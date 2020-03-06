@@ -256,34 +256,6 @@
           </div>
         </div>
 
-        <!-- <div class="modal" v-bind:class="{ 'is-active': isDeployTestModalActive }">
-          <div class="modal-background"></div>
-          <div class="modal-content">
-            <div class="box">
-              <div class="field">
-                <label class="label">Grid</label>
-                <div class="control">
-                  <div class="select">
-                    <select v-model="grid" @change="validateTest();">
-                      <option :value="undefined" disabled style="display:none">Select grid for test</option>
-                      <option
-                        v-for="_grid in listOfGrids"
-                        :key="_grid.ID"
-                        :value="_grid"
-                      >{{_grid.Name}}</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <button
-                v-bind:disabled="!testDeployReady"
-                class="button is-success"
-                @click="deployTest();"
-              >Deploy</button>
-              <button class="button" @click="clearDeployModal();">Cancel</button>
-            </div>
-          </div>
-        </div> -->
         <div class="modal" v-bind:class="{ 'is-active': isDeployTestModalActive }">
           <div class="modal-background"></div>
           <div class="modal-content">
@@ -774,13 +746,10 @@ export default {
       }
     },
     deployTest: function() {
-      console.log('this.selectedGrids', this.selectedGrids)
       var gridsToDeploy = [];
       this.selectedGrids.map(grid => {
         gridsToDeploy.push({grid_id: grid.ID, grid_region: grid.Region})
       })
-      console.log('this.gridsToDeploy', this.gridsToDeploy)
-      console.log('gridsToDeploy', gridsToDeploy)
 
       var path, body;
 
