@@ -1,7 +1,8 @@
 kubectl --namespace=swarmhub exec -it cockroachdb-0 -- /bin/bash
-./cockroach user set plt --insecure
 
 ./cockroach sql --insecure
+
+CREATE USER plt;
 
 DROP DATABASE portal CASCADE;
 
