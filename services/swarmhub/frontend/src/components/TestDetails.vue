@@ -45,7 +45,7 @@
           >Launch</button>
           <form
             v-if="testIP.Status=='Success'"
-            method="post"
+            method="get"
             v-bind:action="'https://' + testIP.IP  /*+ '/login'*/"
             target="_blank"
           >
