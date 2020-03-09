@@ -227,11 +227,13 @@ func DeleteGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 
 	if status == "Deployed" || status == "Available" || status == "Ready" || status == "Error" || status == "Expired" {
-		err := deleteDeployedGrid(id)
-		// TODO: "This is a test to see if it prints."
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		if status == "Deployed" || status == "Available" || status == "Ready" { // only send delete command for these state
+			err := deleteDeployedGrid(id)
+			// TODO: "This is a test to see if it prints."
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 		err = db.DeleteGridByID(id)
 		if err != nil {
