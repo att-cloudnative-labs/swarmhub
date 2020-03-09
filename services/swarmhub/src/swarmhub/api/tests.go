@@ -107,6 +107,7 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			"GRID_ID":          gridID,
 			"GRID_REGION":      gridRegion,
 			"GRID_AUTOSTART":   gridStartAuto,
+			"TEST_ID":          testID,
 			"SCRIPT_ID":        scriptID,
 			"SCRIPT_FILE_NAME": scriptFileName,
 			"LOCUST_COUNT":     fmt.Sprint(gridClientsMap[gridID]),

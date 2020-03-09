@@ -46,7 +46,7 @@ function deployment_args() {
         -var="bucket_region=$AWS_S3_REGION" \
         -var="tfstate_bootstrap=$KEY_BASE-BOOTSTRAP" \
         -var="stop_test=$STOP_TEST" \
-        -var="test_name"=$SCRIPT_ID
+        -var="test_id"=$TEST_ID
 }
 
 function provision_args() {
@@ -160,7 +160,7 @@ elif [ "$DEPLOYMENT" = "true" ]; then
     # deploy locust
 
     # check if variables are set
-    if [[ -z $LOCUST_COUNT || -z $HATCH_RATE || -z $GRID_ID || -z $GRID_REGION || -z $AWS_S3_BUCKET_LOCUSTFILES || -z $SCRIPT_ID || -z $SCRIPT_FILE_NAME ]]; then
+    if [[ -z $LOCUST_COUNT || -z $HATCH_RATE || -z $GRID_ID || -z $GRID_REGION || -z $AWS_S3_BUCKET_LOCUSTFILES || -z $SCRIPT_ID || -z $SCRIPT_FILE_NAME || -z $TEST_ID ]]; then
         exitf 'one or more variables are undefined'
     fi
 
