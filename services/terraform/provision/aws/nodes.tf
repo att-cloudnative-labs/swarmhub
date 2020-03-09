@@ -4,15 +4,6 @@ locals {
   }
 }
 
-data "aws_availability_zones" "az" {
-}
-
-resource "aws_default_subnet" "default" {
-  availability_zone = data.aws_availability_zones.az.names[count.index]
-  tags              = local.cluster_id_tag
-  count             = length(data.aws_availability_zones.az.names)
-}
-
 resource "aws_security_group" "allow-all" {
   name        = "rke-default-security-group-${var.grid_id}"
   description = "rke"
