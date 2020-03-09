@@ -283,25 +283,20 @@ func UpdateTestStatusThatUsesGrid(gridid string, status string) (string, error) 
 }
 
 // InfoForGrafana returns the data needed by grafana to create a snapshot.
-func InfoForGrafana(testID string) (name, gridID string, startTime, endTime time.Time, err error) {
-	var sqlGridID sql.NullString
+func InfoForGrafana(testID string) (name string, startTime, endTime time.Time, err error) {
 	var sqlStart, sqlEnd pq.NullTime
-	query := "SELECT t.name, t.grid_id, t.launched, t.stopped FROM portal.test t WHERE t.id=$1"
-	err = db.QueryRow(query, testID).Scan(&name, &sqlGridID, &sqlStart, &sqlEnd)
+	query := "SELECT t.name, t.launched, t.stopped FROM portal.test t WHERE t.id=$1"
+	err = db.QueryRow(query, testID).Scan(&name, &sqlStart, &sqlEnd)
 	if err != nil {
 		err = fmt.Errorf("failed to query row: %v", err)
-		return name, gridID, startTime, endTime, err
-	}
-
-	if sqlGridID.Valid {
-		gridID = sqlGridID.String
+		return name, startTime, endTime, err
 	}
 
 	if sqlStart.Valid {
 		startTime = sqlStart.Time
 	} else {
 		err = fmt.Errorf("startTime is not valid")
-		return name, gridID, startTime, endTime, err
+		return name, startTime, endTime, err
 	}
 
 	if sqlEnd.Valid {
@@ -311,7 +306,7 @@ func InfoForGrafana(testID string) (name, gridID string, startTime, endTime time
 		endTime = time.Now().UTC()
 	}
 
-	return name, gridID, startTime, endTime, err
+	return name, startTime, endTime, err
 }
 
 // GrafanaSnapshot saves snapshot links into the database
