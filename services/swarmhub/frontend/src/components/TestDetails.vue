@@ -768,6 +768,7 @@ export default {
     clearDeployModal: function() {
       this.grid = {};
       this.isDeployTestModalActive = false;
+      this.selectedGrids = [];
     },
     getTestLink: function(testID) {
       var getLink = false;
