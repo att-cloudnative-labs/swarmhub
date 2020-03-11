@@ -1,0 +1,4 @@
+releases:
+  - name: ttl-enforcer
+    namespace: swarmhub
+    chart: ./charts

@@ -1,0 +1,4 @@
+apiVersion: v1
+name: nats-streaming-operator
+version: 1.0.0
+description: Operator for managing NATS Streaming clusters running on Kubernetes.

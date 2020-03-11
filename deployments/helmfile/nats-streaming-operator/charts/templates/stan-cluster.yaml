@@ -1,0 +1,27 @@
+---
+apiVersion: "streaming.nats.io/v1alpha1"
+kind: "NatsStreamingCluster"
+metadata:
+  name: "stan"
+  annotations:
+    "helm.sh/hook": "post-install"
+    "helm.sh/hook-weight": "2"
+spec:
+  size: {{ .Values.stanReplica }}
+  natsSvc: "nats"
+  config:
+    debug: true
+    storeDir: "/tmp/stan"
+
+  # Define mounts in the Pod Spec
+  template:
+    spec:
+      volumes:
+      - name: stan-store-dir
+        persistentVolumeClaim:
+          claimName: stan-pvc
+      containers:
+        - name: nats-streaming
+          volumeMounts:
+          - mountPath: /tmp
+            name: stan-store-dir

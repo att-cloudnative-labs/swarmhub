@@ -1,0 +1,3 @@
+natsReplica: 1
+stanReplica: 1
+namespace: swarmhub

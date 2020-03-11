@@ -1,0 +1,47 @@
+repositories:
+  - name: stable
+    url: https://kubernetes-charts.storage.googleapis.com
+  - name: incubator
+    url: https://kubernetes-charts-incubator.storage.googleapis.com
+
+releases:
+  # CockroachDB
+  - name: cockroachdb-pv
+    chart: kubernetes-incubator/raw
+    wait: true
+    force: true
+    recreatePods: false
+    installed: true
+    values:
+      - resources:
+          - apiVersion: storage.k8s.io/v1
+            kind: StorageClass
+            metadata:
+              name: local-storage
+            provisioner: kubernetes.io/no-provisioner
+            volumeBindingMode: WaitForFirstConsumer
+          - apiVersion: v1
+            kind: PersistentVolume
+            metadata:
+              name: cockroachdb-pv0
+              labels:
+                type: local
+            spec:
+              storageClassName: local-storage
+              capacity:
+                storage: 2Gi
+              accessModes:
+                - ReadWriteOnce
+              hostPath:
+                path: "/tmp/cockroachdb_pv_0"
+              persistentVolumeReclaimPolicy: Delete
+
+  - name: cockroachdb
+    namespace: swarmhub
+    chart: stable/cockroachdb
+    wait: true
+    needs: 
+      - cockroachdb-pv
+    values:
+      - values.yaml
+

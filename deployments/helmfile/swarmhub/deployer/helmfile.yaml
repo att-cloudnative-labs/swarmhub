@@ -1,0 +1,4 @@
+releases:
+  - name: deployer
+    namespace: swarmhub
+    chart: ./charts

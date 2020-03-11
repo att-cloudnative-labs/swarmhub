@@ -1,0 +1,3 @@
+dockerImage: ttl-enforcer
+dockerhub: false
+replica: 1 

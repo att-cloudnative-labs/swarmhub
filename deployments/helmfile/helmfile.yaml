@@ -1,0 +1,4 @@
+helmfiles:
+  - "cockroachdb/helmfile.yaml"
+  - "nats-streaming-operator/helmfile.yaml"
+  - "swarmhub/helmfile.yaml"

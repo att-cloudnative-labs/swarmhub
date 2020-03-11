@@ -1,0 +1,3 @@
+dockerImage: deployer
+dockerhub: false
+replica: 3
