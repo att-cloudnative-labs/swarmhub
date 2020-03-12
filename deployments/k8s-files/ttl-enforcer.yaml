@@ -33,10 +33,10 @@ spec:
           - name: AWS_S3_BUCKET_TFSTATE
             valueFrom:
               configMapKeyRef:
-                key: AWS_S3_BUCKET_TFSTATE
+                key: aws_s3_bucket_tfstate
                 name: deployment-config
           - name: AWS_S3_REGION
             valueFrom:
               configMapKeyRef:
-                key: AWS_S3_REGION
+                key: aws_s3_region
                 name: deployment-config

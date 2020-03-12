@@ -54,7 +54,7 @@ kubectl create secret generic cloud-credentials --from-literal=aws_access_key=$A
 ```
 Generate deployment-config configMap
 ```
-kubectl create configmap deployment-config --from-literal=AWS_S3_BUCKET_LOCUSTFILES=<locustfiles-bucket> --from-literal=AWS_S3_BUCKET_TFSTATE=<tfstate-bucket> --from-literal=AWS_S3_REGION=<s3-bucket-region> --namespace=swarmhub
+kubectl create configmap deployment-config --from-literal=aws_s3_bucket_locustfiles=<locustfiles-bucket> --from-literal=aws_s3_bucket_tfstate=<tfstate-bucket> --from-literal=aws_s3_region=<s3-bucket-region> --namespace=swarmhub
 ```
 Generate TLS information and create secret.
 ```
