@@ -1,6 +1,6 @@
 
 helmfiles:
-  - path: ./secrets/helmfile.yaml
+  - path: ./init/helmfile.yaml
 
 releases:
   - name: swarmhub

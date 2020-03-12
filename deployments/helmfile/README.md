@@ -46,8 +46,8 @@ swarmhub                      Swarmhub services (swarmhub, ttl-enforcer, deploye
 * Using local docker image (If using local docker images, make sure you can SSH into the kubernetes cluster host machine to run docker build)
 
 ### Deployment steps
-1. Create `jwt-key`, `localusers.csv`, `server.crt` & `server.key` based on [deployments](../README.md) and put them in `helmfile/swarmhub/secrets/files` directory.
-2. Create an `sh` file in the directory `helmfile/swarmhub/secret/files` (e.g. `setenv.sh` ) with the following syntax:
+1. Create `jwt-key`, `localusers.csv`, `server.crt` & `server.key` based on [deployments](../README.md) and put them in `helmfile/swarmhub/init/files` directory.
+2. Create an `sh` file in the directory `helmfile/swarmhub/init/files` (e.g. `setenv.sh` ) with the following syntax:
 ```
 #!/bin/bash
 
@@ -59,11 +59,11 @@ export AWS_S3_BUCKET_LOCUSTFILES=
 export AWS_S3_BUCKET_TFSTATE=
 export AWS_S3_REGION=
 ```
-3. Run `. ./swarmhub/secrets/files/setenv.sh` to set the environment variables.
+3. Run `. ./swarmhub/init/files/setenv.sh` to set the environment variables.
 4. Go to `helmfile/swarmhub` and run `helmfile apply` to deploy all the swarmhub services (`swarmhub`, `ttl-enforcer` & `deployer`).
 
 ### Notes
-* If you have changes any secret or cloud credentials, reinstall the secret by running `helmfile apply` at `helmfile/swarmhub/secrets`
+* If you have changes any secret or configmap, reinstall the swarmhub-init by running `helmfile apply` at `helmfile/swarmhub/init`
 * To deploy individual services, go to respective folder and run `helmfile apply`.
 
 ## Prometheus
