@@ -38,14 +38,14 @@ spec:
               name: jwt-key
         - name: AWS_S3_BUCKET_LOCUSTFILES
           valueFrom:
-            secretKeyRef:
-              key: aws_s3_bucket_locustfiles
-              name: cloud-credentials
+            configMapKeyRef:
+              key: AWS_S3_BUCKET_LOCUSTFILES
+              name: deployment-config
         - name: AWS_S3_BUCKET_TFSTATE
           valueFrom:
-            secretKeyRef:
-              key: aws_s3_bucket_tfstate
-              name: cloud-credentials
+            configMapKeyRef:
+              key: AWS_S3_BUCKET_TFSTATE
+              name: deployment-config
         - name: AWS_S3_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
@@ -58,9 +58,9 @@ spec:
               name: cloud-credentials
         - name: AWS_S3_REGION
           valueFrom:
-            secretKeyRef:
-              key: aws_s3_region
-              name: cloud-credentials
+            configMapKeyRef:
+              key: AWS_S3_REGION
+              name: deployment-config
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
