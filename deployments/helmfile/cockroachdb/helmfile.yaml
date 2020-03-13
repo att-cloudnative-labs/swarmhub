@@ -33,7 +33,7 @@ releases:
               accessModes:
                 - ReadWriteOnce
               hostPath:
-                path: "/tmp/cockroachdb_pv_0"
+                path: "/data/cockroachdb_pv_0"
               persistentVolumeReclaimPolicy: Delete
 
   - name: cockroachdb

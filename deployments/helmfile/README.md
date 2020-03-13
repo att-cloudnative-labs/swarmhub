@@ -16,15 +16,18 @@ swarmhub                      Swarmhub services (swarmhub, ttl-enforcer, deploye
 ```
 
 # Deployment
+## Pre-deployment steps
 **Make sure your `kubectl` command is pointing to your desired cluster before running `helmfile`.**
+
+**Create namespace `swarmhub` before applying any helmfile.**
 
 ## CockroachDB
 ### Default Spec
 * 1 replica
-* local Persistent Volume Path: `/tmp/cockroachdb_pv_0`
+* local Persistent Volume Path: `/data/cockroachdb_pv_0`
 
 ### Notes
-* Make sure in the k8s cluster host `tmp/cockroachdb_pv_0` directory exist before installation.
+* Make sure in the k8s cluster host `/data/cockroachdb_pv_0` directory exist before installation.
 * After the service is up, populate the initial database based on [tables.txt](../db/tables.txt).
 * `helmfile destroy` might not clean up properly, need to manually delete the PersistentVolumeClaim using `kubectl -n swarmhub delete pvc  	datadir-cockroachdb-0`
 
@@ -32,11 +35,12 @@ swarmhub                      Swarmhub services (swarmhub, ttl-enforcer, deploye
 ### Default Spec
 * 1 replica for stan
 * 1 replica for nats
-* local Persistent Volume Path: `/tmp/stan`
+* local Persistent Volume Path: `/data/stan`
 
 ### Notes
-* Make sure in the k8s cluster host `tmp/stan` directory exist before installation.
+* Make sure in the k8s cluster host `/data/stan` directory exist before installation.
 * It will fail on the first time installation as the CRD is not created yet. Try to reinstall nats-streaming operator again by running `helmfile destroy && helmfile apply`.
+* `helm destroy` will not cleanup `nats-x` and `stan-x` properly. You need to remove that manually.
 
 ## Swarmhub
 ### Default Spec
@@ -61,6 +65,7 @@ export AWS_S3_REGION=
 ```
 3. Run `. ./swarmhub/init/files/setenv.sh` to set the environment variables.
 4. Go to `helmfile/swarmhub` and run `helmfile apply` to deploy all the swarmhub services (`swarmhub`, `ttl-enforcer` & `deployer`).
+5. The web will be served at `https://<URL>:30000`
 
 ### Notes
 * If you have changes any secret or configmap, reinstall the swarmhub-init by running `helmfile apply` at `helmfile/swarmhub/init`
@@ -68,17 +73,17 @@ export AWS_S3_REGION=
 
 ## Prometheus
 ### Default Spec
-* local Persistent Volume Path: `/tmp/prometheus-pv`
+* local Persistent Volume Path: `/data/prometheus-pv`
 
 ### Notes
-* Make sure in the k8s cluster host `tmp/prometheus-pv` directory exist before installation.
+* Make sure in the k8s cluster host `/data/prometheus-pv` directory exist before installation.
 
 ## Grafana
 ### Default Spec
-* local Persistent Volume Path: `/tmp/grafana-pv`
+* local Persistent Volume Path: `/data/grafana-pv`
 
 ### Notes
-* Make sure in the k8s cluster host `tmp/grafana-pv` directory exist before installation.
+* Make sure in the k8s cluster host `/data/grafana-pv` directory exist before installation.
 
 
 # Command Examples
