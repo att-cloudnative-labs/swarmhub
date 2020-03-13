@@ -76,7 +76,7 @@ func GetMasterIP(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	for _, grid := range grids {
 
-		objName := fmt.Sprintf("%s-%s-%s-PROVISION", os.Getenv("DEPLOYMENT_NAME"), grid.ID, grid.Region)
+		objName := fmt.Sprintf("%s-%s-PROVISION", grid.ID, grid.Region)
 
 		input := &s3.GetObjectInput{
 			Bucket: aws.String(os.Getenv("AWS_S3_BUCKET_TFSTATE")),
