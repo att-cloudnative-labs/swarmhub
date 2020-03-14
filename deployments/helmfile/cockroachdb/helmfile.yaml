@@ -7,7 +7,7 @@ repositories:
 releases:
   # CockroachDB
   - name: cockroachdb-pv
-    chart: kubernetes-incubator/raw
+    chart: incubator/raw
     wait: true
     force: true
     recreatePods: false

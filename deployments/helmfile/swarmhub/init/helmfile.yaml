@@ -1,12 +1,12 @@
 repositories:
-- name: "kubernetes-incubator"
+- name: incubator
   url: "https://kubernetes-charts-incubator.storage.googleapis.com/"
 
 releases:
 
 - name: "swarmhub-init"
   namespace: "swarmhub"
-  chart: "kubernetes-incubator/raw"
+  chart: incubator/raw
   version: "0.1.0"
   wait: true
   installed: true
