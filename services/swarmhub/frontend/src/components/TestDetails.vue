@@ -52,7 +52,7 @@
             target="_blank"
           >
            <div class="control">
-              <div class="select">
+              <div v-if="!selectedLocustGrid.IP" class="select">
                 <select
                   v-model="selectedGrid"
                   @change="getLocustGridInfo(selectedGrid);"
@@ -573,6 +573,19 @@ export default {
     };
   },
   methods: {
+    reset: function() {
+      this.testAttachments = [];
+      this.selectedAttachment = undefined;
+      this.locustConfig = {};
+      this.selectedLocustGrid = { ID: "", Name: "", IP: "" };
+      this.testConfig = [
+        { Name: "clients", Value: "*required" },
+        { Name: "hatch-rate", Value: "*required" },
+        { Name: "run-time", Value: "3600" },
+        { Name: "loglevel", Value: "ERROR" },
+        { Name: "load-profile", Value: "[(0,0), (10m,100%), (+15m,0%)]" }
+      ];
+    },
     getGrafanaConfigs: function() {
       fetch("/api/grafana/info").then(response => {
         if (response.status === 200) {
@@ -624,8 +637,7 @@ export default {
       this.uploadAttachment(document.getElementById("attachmentid").files[0]);
     },
     loadTestData: function(testid) {
-      this.testAttachments = [];
-      this.selectedAttachment = undefined;
+      this.reset();
       if (testid) {
         axios
           .get("/api/test?id=" + testid)
@@ -809,7 +821,7 @@ export default {
             this.listOfLocustGrids = response.data.Grids;
 
             // if test is only launched in one grid, select it automatically
-            if (this.listOfLocustGrids.length == 1){
+            if (this.listOfLocustGrids.length === 1){
               this.getLocustGridInfo(this.listOfLocustGrids[0]);
             }
           });
@@ -944,7 +956,7 @@ export default {
       }
     },
     getLocustGridInfo: function(locustGrid) {
-        this.selectedLocustGrid = { ID: locustGrid.ID, Name: locustGrid.Name, IP: locustGrid.IP };
+      this.selectedLocustGrid = { ID: locustGrid.ID, Name: locustGrid.Name, IP: locustGrid.IP };
     }
   }
 };
