@@ -43,14 +43,31 @@
             class="button is-link"
             @click="isDeployTestModalActive = true; getGrids();"
           >Launch</button>
+        </div>
+        <div class="block">
           <form
             v-if="testIP.Status=='Success'"
             method="get"
-            v-bind:action="'https://' + testIP.IP  /*+ '/login'*/"
+            v-bind:action="'https://' + selectedLocustGrid.IP  /*+ '/login'*/"
             target="_blank"
           >
-            <input type="hidden" id="token" name="authToken" v-bind:value="testIP.Auth" />
-            <button type="submit" id="locust" class="button is-primary">Master Locust</button>
+           <div class="control">
+              <div class="select">
+                <select
+                  v-model="selectedGrid"
+                  @change="getLocustGridInfo(selectedGrid);"
+                >
+                  <option :value="undefined" disabled style="display:none">Select one</option>
+                  <option
+                    v-for="locustGrid in listOfLocustGrids"
+                    :key="locustGrid.IP"
+                    :value="locustGrid"
+                  >{{locustGrid.Name}}</option>
+                </select>
+              </div>
+              <input type="hidden" id="token" name="authToken" v-bind:value="testIP.Auth" />
+              <button :disabled="!selectedLocustGrid.IP" type="submit" id="locust" class="button is-primary">Open Locust</button>
+            </div>
           </form>
         </div>
         <div class="testDetails">
@@ -490,7 +507,7 @@ export default {
   watch: {
     testID: function(newVal) {
       this.testIP.Status = "";
-      this.testIP.IP = "";
+      this.testIP.Grids =  { ID: "", Name: "", IP: "" };
       this.testIP.Auth = "";
       this.testIP.Description = "";
       this.loadTestData(newVal);
@@ -538,13 +555,15 @@ export default {
       logStatus: "",
       logs: "",
       listOfGrids: [],
-      grid: {},
+      grid: undefined,
       selectedGrids: [],
       addGridReady: false,
       region: "us-east-1",
       testDeployReady: false,
       startAutomatically: false,
-      testIP: { Status: "", IP: "", Auth: "", Description: "" },
+      testIP: { Status: "", Grids: { ID: "", Name: "", IP: "" }, Auth: "", Description: "" },
+      selectedLocustGrid: { ID: "", Name: "", IP: "" },
+      listOfLocustGrids: [],
       locust_url: null,
       locust_token: null,
       locust_config_id: "",
@@ -782,13 +801,20 @@ export default {
         default:
           getLink = false;
       }
-
       if (getLink) {
         axios
           .get("/api/test/" + testID + "/ip")
-          .then(response => (this.testIP = response.data));
+          .then(response => {
+            this.testIP = response.data;
+            this.listOfLocustGrids = response.data.Grids;
+
+            // if test is only launched in one grid, select it automatically
+            if (this.listOfLocustGrids.length == 1){
+              this.getLocustGridInfo(this.listOfLocustGrids[0]);
+            }
+          });
       } else {
-        this.testIP = { Status: "", IP: "", Auth: "", Description: "" };
+        this.testIP = { Status: "", Grids: { ID: "", Name: "", IP: "" }, Auth: "", Description: "" };
       }
     },
     getTestAttachments: function(testID) {
@@ -916,6 +942,9 @@ export default {
       if (this.grid) {
         this.addGridReady = true;
       }
+    },
+    getLocustGridInfo: function(locustGrid) {
+        this.selectedLocustGrid = { ID: locustGrid.ID, Name: locustGrid.Name, IP: locustGrid.IP };
     }
   }
 };
