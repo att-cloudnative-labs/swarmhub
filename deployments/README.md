@@ -36,6 +36,9 @@ First step to deploying swarmhub would be to create the namespace.
 kubectl create -f namespace.json
 ```
 
+#### S3 bucket for store tfstate and locustfile
+Create S3 bucket for tfstate and locustfile.
+Make sure both buckets are at the same region.
 
 #### Kubernetes Configs and Secrets
 In order to deploy deployer we need to ensure the necessary configs and secrets are made.

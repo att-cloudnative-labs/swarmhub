@@ -9,9 +9,7 @@
 ## Folder description
 ```
 cockroachdb                   CockroachDB service (database)
-grafana                       Grafana service (for monitoring dashboard)
 nats-streaming-operator       NATS streaming service (messaging protocol)
-prometheus                    Prometheus service (metrics scraping)
 swarmhub                      Swarmhub services (swarmhub, ttl-enforcer, deployer)
 ```
 
@@ -20,6 +18,8 @@ swarmhub                      Swarmhub services (swarmhub, ttl-enforcer, deploye
 **Make sure your `kubectl` command is pointing to your desired cluster before running `helmfile`.**
 
 **Create namespace `swarmhub` before applying any helmfile.**
+
+**Create S3 bucket for `tfstate` and `locustfile`. Make sure both buckets are in the same region**
 
 ## CockroachDB
 ### Default Spec
@@ -65,36 +65,21 @@ export AWS_S3_REGION=
 ```
 3. Run `. ./swarmhub/init/files/setenv.sh` to set the environment variables.
 4. Go to `helmfile/swarmhub` and run `helmfile apply` to deploy all the swarmhub services (`swarmhub`, `ttl-enforcer` & `deployer`).
-5. The web will be served at `https://<URL>:30000`
+5. Swarmhub client will be served at `https://<URL>:30000`
 
 ### Notes
 * If you have changes any secret or configmap, reinstall the swarmhub-init by running `helmfile apply` at `helmfile/swarmhub/init`
 * To deploy individual services, go to respective folder and run `helmfile apply`.
 
-## Prometheus
-### Default Spec
-* local Persistent Volume Path: `/data/prometheus-pv`
-
-### Notes
-* Make sure in the k8s cluster host `/data/prometheus-pv` directory exist before installation.
-
-## Grafana
-### Default Spec
-* local Persistent Volume Path: `/data/grafana-pv`
-
-### Notes
-* Make sure in the k8s cluster host `/data/grafana-pv` directory exist before installation.
-
-
 # Command Examples
 ```
 # Install the service
 helmfile apply                        // current directory
-helmfile -f prometheus/ apply         // By path
+helmfile -f deployer/ apply           // By path
 
 # Uninstall the service
 helmfile destroy                      // current directory
-helmfile -f prometheus/ destroy       // By path
+helmfile -f deployer/ destroy         // By path
 
 # One-liner uninstall and reinstall the service (Normally, when the docker images on remote side need to be updated)
 helmfile destoy && helmfile apply                                 // current directory
