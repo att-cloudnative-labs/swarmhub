@@ -2,7 +2,13 @@
   <div class="tile is-parent">
     <div v-if="grid" class="tile is-child box">
       <h1 class="title">{{ grid.Name }}</h1>
-      <p class="subtitle is-6"><a class="button is-small is-rounded is-danger" @click="isDeleteGridModalActive = true;">delete</a></p>
+      <p class="subtitle is-6">
+        <button 
+          class="button is-small is-rounded is-danger" 
+          :disabled="grid.Status === 'Deploying'" 
+          @click="isDeleteGridModalActive = true;"
+        >delete</button>
+      </p>
       <div class="block">
         <p class="header is-6">Status: {{ grid.Status }} (<a @click="showLogs(true);">show logs</a>)</p>
         <p class="header is-6">Health: {{ grid.Health }}</p>
