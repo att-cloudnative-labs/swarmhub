@@ -305,7 +305,7 @@ func CancelTestDeployment(w http.ResponseWriter, r *http.Request, ps httprouter.
 			"DESTROY_DEPLOYMENT": "true",
 		}
 
-		message := &natsMessage{ID: testID, DeploymentType: "Test", Params: params}
+		message := &natsMessage{ID: testID, DeploymentType: "CancelTest", Params: params}
 		b, err := json.Marshal(message)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -318,21 +318,13 @@ func CancelTestDeployment(w http.ResponseWriter, r *http.Request, ps httprouter.
 			w.Write([]byte("Failed to send stop command for: " + testID))
 			return
 		}
-
-		time.Sleep(1 * time.Second) // give some time to help ensure the stop command is run
-		err = stopTest(grid.ID, grid.Region, testID, "CancelTest")
+		err = db.UpdateTestIDinGrid(grid.ID, "")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Failed to stopTest within CancelTestDeployment: " + err.Error()))
+			w.Write([]byte(fmt.Sprintf("Wasn't able to update Test ID in grid: %v", err.Error())))
 			return
 		}
-	}
 
-	// since there is no need to wait for the test cancellation to completely finish
-	// go ahead and update the test status so it can be redeployed if need be.
-	err = db.UpdateTestStatus(testID, "Ready")
-	if err != nil {
-		fmt.Println("Was unable to update test status!", err.Error())
 	}
 
 	w.WriteHeader(http.StatusOK)

@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	"github.com/nats-io/stan.go"
@@ -20,7 +19,6 @@ var (
 	natsPassword    string
 	natsURL         string
 	clusterID       string
-	startCmdMutex   = &sync.Mutex{}
 	message         = make(chan string)
 	sc              stan.Conn
 	subCmdStart     stan.Subscription
@@ -40,6 +38,7 @@ type CommandStruct struct {
 	OutputStream     io.ReadCloser
 	ErrorStream      io.ReadCloser
 	cmd              *exec.Cmd
+	Params           map[string]interface{}
 	CurrentlyRunning bool
 }
 
@@ -94,7 +93,7 @@ func init() {
 func main() {
 	scriptPath = os.Getenv("SCRIPT_DIR_PATH")
 	if scriptPath == "" {
-		fmt.Printf("Script path not set. Using /terraform")
+		fmt.Println("Script path not set. Using /terraform")
 		scriptPath = "/terraform"
 	}
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
@@ -138,7 +137,7 @@ func messageStopHandler(msg *stan.Msg) {
 		fmt.Println("failed to unmarshal msg.Data: ", err.Error())
 		return
 	}
-	stopCmdJob(stopMsg.ID)
+	stopCmdJob(stopMsg)
 	fmt.Println("Finished running stop handler for ", stopMsg.ID)
 }
 
@@ -158,13 +157,11 @@ func messageStartHandler(msg *stan.Msg) {
 	StartCmdJob(scriptPath+"/"+scriptName, startMsg.Params, startMsg.ID, startMsg.DeploymentType)
 
 	fmt.Println("Finished running commands on start message ", startMsg.ID)
-	startCmdMutex.Unlock()
 }
 
 func startCmd(sc stan.Conn) {
 	var err error
 	for {
-		startCmdMutex.Lock()
 		fmt.Println("Subscribing to deployer.start")
 		subCmdStart, err = sc.QueueSubscribe("deployer.start", "deployer", messageStartHandler,
 			stan.DurableName("durable-deployer"), stan.SetManualAckMode(), stan.MaxInflight(1))
@@ -186,20 +183,25 @@ func StartCmdJob(command string, parameters map[string]interface{}, id string, d
 	runCommand(command, parameters, id, deploymentType)
 }
 
-func stopCmdJob(id string) {
-	if val, ok := cmdMap[id]; ok {
-		if err := val.cmd.Process.Kill(); err != nil {
-			fmt.Println("failed to kill process: ", err)
+func stopCmdJob(d Deployment) {
+	var cid = cmdID(d.Params, d.ID, d.DeploymentType)
+	if val, ok := cmdMap[cid]; ok {
+		if err := val.cmd.Process.Signal(os.Interrupt); err != nil {
+			fmt.Println("failed to stop process: ", err)
 			return
 		}
-		output := CommandOutput{ID: id, Output: "Stopped job.", Running: false, DeploymentType: cmdMap[id].DeploymentType}
+		output := CommandOutput{ID: d.ID, Output: "Stopping job...", Running: true, DeploymentType: cmdMap[cid].DeploymentType}
 		pubMsg, err := json.Marshal(output)
 		if err != nil {
 			fmt.Println("Failed to convert stdout to json: ", err.Error())
 		}
 		fmt.Println("Publishing: ", string(pubMsg))
-		publishTopic := "deployer.output." + id
+		publishTopic := "deployer.output." + d.ID
 		sc.Publish(publishTopic, pubMsg)
+		errUpdate := updateInitialDeploymentStatus(d.ID, d.DeploymentType, cmdMap[cid].Params)
+		if errUpdate != nil {
+			fmt.Println("Failed to update initial deployment status: ", err.Error())
+		}
 		return
 	}
 
@@ -209,18 +211,20 @@ func stopCmdJob(id string) {
 
 func runCommand(command string, parameters map[string]interface{}, id string, deploymentType string) error {
 	var err error
-
-	if _, ok := cmdMap[id]; ok {
+	var cid = cmdID(parameters, id, deploymentType)
+	if _, ok := cmdMap[cid]; ok {
 		fmt.Println("Command already running.")
 		return err
 	}
 
 	data := CommandStruct{}
 
-	cmdMap[id] = &data
+	cmdMap[cid] = &data
 
-	data.ID = id
+	data.ID = cid
 	data.cmd = exec.Command(command)
+	data.Params = parameters
+	data.DeploymentType = deploymentType
 	// SysProcAttr being used to run commands as root
 	//cmd.SysProcAttr = &syscall.SysProcAttr{}
 	//cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 0, Gid: 0}
@@ -251,13 +255,28 @@ func runCommand(command string, parameters map[string]interface{}, id string, de
 
 	cmdErr := data.cmd.Wait()
 	if cmdErr != nil {
-		fmt.Println("Failed to run command: ", cmdErr.Error())
-		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Error", Params: parameters}
-		statusMsg, err := json.Marshal(status)
-		if err != nil {
-			fmt.Println("Failed to convert json: ", err.Error())
+		if data.cmd.ProcessState.ExitCode() == 5 { //return exit code 5 from script if stopped by interupt signal
+			var cancelType string
+			switch cmdMap[cid].DeploymentType {
+			case "Test":
+				cancelType = "CancelTest"
+			case "Grid":
+				cancelType = "CancelGrid"
+			}
+			errUpdate = updateFinalDeploymentStatus(id, cancelType, parameters)
+			if errUpdate != nil {
+				errUpdate = fmt.Errorf("failed to updateDeploymentStatus: %v", errUpdate)
+				fmt.Println(errUpdate)
+			}
+		} else {
+			fmt.Println("Failed to run command: ", cmdErr.Error())
+			status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Error", Params: parameters}
+			statusMsg, err := json.Marshal(status)
+			if err != nil {
+				fmt.Println("Failed to convert json: ", err.Error())
+			}
+			sc.Publish("deployer.status", statusMsg)
 		}
-		sc.Publish("deployer.status", statusMsg)
 	}
 	data.CurrentlyRunning = false
 	output := CommandOutput{ID: data.ID, Running: data.CurrentlyRunning}
@@ -277,7 +296,7 @@ func runCommand(command string, parameters map[string]interface{}, id string, de
 		}
 	}
 
-	delete(cmdMap, id)
+	delete(cmdMap, cid)
 	if err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// The program has exited with an exit code != 0
@@ -305,6 +324,10 @@ func updateInitialDeploymentStatus(id string, deploymentType string, parameters 
 	case "DeleteGrid":
 		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deleting"}
 		statusUpdates = append(statusUpdates, status)
+	case "CancelGrid":
+		if val, ok := parameters[gridID]; ok && val != "" {
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Stopping"})
+		}
 	case "StopTest":
 		if val, ok := parameters[gridID]; ok && val != "" {
 			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Cleaning"})
@@ -315,6 +338,9 @@ func updateInitialDeploymentStatus(id string, deploymentType string, parameters 
 	case "CancelTest":
 		if val, ok := parameters[gridID]; ok && val != "" {
 			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Cleaning"})
+		}
+		if val, ok := parameters[testID]; ok && val != "" {
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopping"})
 		}
 	case "GridCleanup":
 		status := DeploymentStatus{ID: id, DeploymentType: "Grid", Status: "Cleaning"}
@@ -340,6 +366,10 @@ func updateFinalDeploymentStatus(id string, deploymentType string, parameters ma
 	case "DeleteGrid":
 		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deleted"}
 		statusUpdates = append(statusUpdates, status)
+	case "CancelGrid":
+		if val, ok := parameters[gridID]; ok && val != "" {
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Available"})
+		}
 	case "Test":
 		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deployed"}
 		statusUpdates = append(statusUpdates, status)
@@ -353,6 +383,9 @@ func updateFinalDeploymentStatus(id string, deploymentType string, parameters ma
 	case "CancelTest":
 		if val, ok := parameters[gridID]; ok && val != "" {
 			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Available"})
+		}
+		if val, ok := parameters[testID]; ok && val != "" {
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopped"})
 		}
 	case "GridCleanup":
 		status := DeploymentStatus{ID: id, DeploymentType: "Grid", Status: "Available"}
@@ -415,4 +448,14 @@ func CommandStdError(cmd CommandStruct, publishTopic string) {
 			fmt.Println("Failed to publish to topic: ", err.Error())
 		}
 	}
+}
+
+func cmdID(parameters map[string]interface{}, id, deploymentType string) string {
+	switch deploymentType {
+	case "Test", "CancelTest":
+		return fmt.Sprintf("%s-%s-%s", id, parameters["GRID_ID"], parameters["GRID_REGION"])
+	case "Grid", "CancelGrid":
+		return fmt.Sprintf("%s-%s", id, parameters["GRID_REGION"])
+	}
+	return ""
 }

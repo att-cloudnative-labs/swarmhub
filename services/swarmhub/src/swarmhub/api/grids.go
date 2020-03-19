@@ -96,7 +96,7 @@ func StartGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func stopGrid(id string) error {
-	message := &natsMessage{ID: id, DeploymentType: "Grid"}
+	message := &natsMessage{ID: id, DeploymentType: "CancelGrid"}
 	b, err := json.Marshal(message)
 	if err != nil {
 		fmt.Println("Not publishing nats message. Failed to convert to json: ", err.Error())
