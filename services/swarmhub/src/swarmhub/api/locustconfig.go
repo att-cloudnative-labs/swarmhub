@@ -114,6 +114,7 @@ func UpdateLocustConfig(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 				"GRID_ID":          grid.ID,
 				"GRID_REGION":      grid.Region,
 				"GRID_AUTOSTART":   "true",
+				"TEST_ID":          testId,
 				"SCRIPT_ID":        scriptID,
 				"SCRIPT_FILE_NAME": scriptFileName,
 				"LOCUST_COUNT":     fmt.Sprint(gridClientsMap[grid.ID]),
