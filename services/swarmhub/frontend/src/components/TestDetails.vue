@@ -52,7 +52,7 @@
             target="_blank"
           >
            <div class="control">
-              <div v-if="!selectedLocustGrid.IP" class="select">
+              <div v-if="listOfLocustGrids.length > 1" class="select">
                 <select
                   v-model="selectedGrid"
                   @change="getLocustGridInfo(selectedGrid);"
