@@ -32,8 +32,11 @@
         <div class="block">
           <p class="header is-6">
             Status:
-            <a v-bind:class="{ 'has-text-danger': test.Status == 'Missing info'  }" >{{ test.Status }}</a>
-            (<a @click="showLogs(true);">show logs</a>)
+            <a
+              v-bind:class="{ 'has-text-danger': test.Status == 'Missing info'  }"
+            >{{ test.Status }}</a>
+            (
+            <a @click="showLogs(true);">show logs</a>)
           </p>
           <p class="header is-6">Created: {{ test.Created | moment("lll") }}</p>
         </div>
@@ -51,12 +54,9 @@
             v-bind:action="'https://' + selectedLocustGrid.IP  /*+ '/login'*/"
             target="_blank"
           >
-           <div class="control">
+            <div class="control">
               <div v-if="listOfLocustGrids.length > 1" class="select">
-                <select
-                  v-model="selectedGrid"
-                  @change="getLocustGridInfo(selectedGrid);"
-                >
+                <select v-model="selectedGrid" @change="getLocustGridInfo(selectedGrid);">
                   <option :value="undefined" disabled style="display:none">Select one</option>
                   <option
                     v-for="locustGrid in listOfLocustGrids"
@@ -66,7 +66,12 @@
                 </select>
               </div>
               <input type="hidden" id="token" name="authToken" v-bind:value="testIP.Auth" />
-              <button :disabled="!selectedLocustGrid.IP" type="submit" id="locust" class="button is-primary">Open Locust</button>
+              <button
+                :disabled="!selectedLocustGrid.IP"
+                type="submit"
+                id="locust"
+                class="button is-primary"
+              >Open Locust</button>
             </div>
           </form>
         </div>
@@ -143,7 +148,9 @@
                 </tr>
                 <tr v-for="config in testConfig" :key="config">
                   <td>{{ config.Name }}</td>
-                  <td v-bind:class="{ 'has-text-grey': config.Value == '*required' }">{{ config.Value }}</td>
+                  <td
+                    v-bind:class="{ 'has-text-grey': config.Value == '*required' }"
+                  >{{ config.Value }}</td>
                 </tr>
               </table>
             </div>
@@ -506,7 +513,7 @@ export default {
   watch: {
     testID: function(newVal) {
       this.testIP.Status = "";
-      this.testIP.Grids =  { ID: "", Name: "", IP: "" };
+      this.testIP.Grids = { ID: "", Name: "", IP: "" };
       this.testIP.Auth = "";
       this.testIP.Description = "";
       this.loadTestData(newVal);
@@ -560,7 +567,12 @@ export default {
       region: "us-east-1",
       testDeployReady: false,
       startAutomatically: false,
-      testIP: { Status: "", Grids: { ID: "", Name: "", IP: "" }, Auth: "", Description: "" },
+      testIP: {
+        Status: "",
+        Grids: { ID: "", Name: "", IP: "" },
+        Auth: "",
+        Description: ""
+      },
       selectedLocustGrid: { ID: "", Name: "", IP: "" },
       listOfLocustGrids: [],
       locust_url: null,
@@ -601,7 +613,7 @@ export default {
         headers: new Headers({
           "Content-Type": "application/x-www-form-urlencoded"
         })
-      }).then(response => {
+      }).then(() => {
         this.loadTestData(testID);
         this.$emit("get-tests", "");
       });
@@ -613,7 +625,7 @@ export default {
         headers: new Headers({
           "Content-Type": "application/x-www-form-urlencoded"
         })
-      }).then(response => {
+      }).then(() => {
         this.loadTestData(testID);
         this.$emit("get-tests", "");
       });
@@ -625,7 +637,7 @@ export default {
         headers: new Headers({
           "Content-Type": "application/x-www-form-urlencoded"
         })
-      }).then(response => {
+      }).then(() => {
         this.loadTestData(testID);
         this.$emit("get-tests", "");
         this.selectedResult = undefined;
@@ -684,26 +696,26 @@ export default {
       console.log("Delete id: ", id);
       axios
         .post("/api/test/" + id + "/delete")
-        .then(response => this.$emit("get-tests", ""))
+        .then(() => this.$emit("get-tests", ""))
         .then(this.$router.push("/tests"));
     },
     stopTest: function(id) {
       console.log("Delete id: ", id);
       axios
         .post("/api/test/" + id + "/stop")
-        .then(response => this.$emit("get-tests", ""))
+        .then(() => this.$emit("get-tests", ""))
         .then(this.$router.push("/tests"));
     },
     deleteAttachment: function(testID, attachmentID) {
       axios
         .post("/api/test/" + testID + "/attachment/" + attachmentID + "/delete")
-        .then(response => {
+        .then(() => {
           this.selectedAttachment = undefined;
           this.getTestAttachments(testID);
         });
     },
     cancelTest: function(id) {
-      axios.post("/api/test/" + id + "/cancel").then(response => {
+      axios.post("/api/test/" + id + "/cancel").then(() => {
         this.$emit("get-tests", "");
         this.loadTestData(id);
       });
@@ -778,8 +790,8 @@ export default {
     deployTest: function() {
       var gridsToDeploy = [];
       this.selectedGrids.map(grid => {
-        gridsToDeploy.push({grid_id: grid.ID, grid_region: grid.Region})
-      })
+        gridsToDeploy.push({ grid_id: grid.ID, grid_region: grid.Region });
+      });
 
       var path, body;
 
@@ -788,7 +800,7 @@ export default {
         grids: gridsToDeploy,
         start_automatically: this.startAutomatically
       };
-      axios.post(path, body).then(response => {
+      axios.post(path, body).then(() => {
         this.isDeployTestModalActive = false;
         this.loadTestData(this.test.ID);
         this.selectedGrids = [];
@@ -813,19 +825,22 @@ export default {
           getLink = false;
       }
       if (getLink) {
-        axios
-          .get("/api/test/" + testID + "/ip")
-          .then(response => {
-            this.testIP = response.data;
-            this.listOfLocustGrids = response.data.Grids;
+        axios.get("/api/test/" + testID + "/ip").then(response => {
+          this.testIP = response.data;
+          this.listOfLocustGrids = response.data.Grids;
 
-            // if test is only launched in one grid, select it automatically
-            if (this.listOfLocustGrids.length === 1){
-              this.getLocustGridInfo(this.listOfLocustGrids[0]);
-            }
-          });
+          // if test is only launched in one grid, select it automatically
+          if (this.listOfLocustGrids.length === 1) {
+            this.getLocustGridInfo(this.listOfLocustGrids[0]);
+          }
+        });
       } else {
-        this.testIP = { Status: "", Grids: { ID: "", Name: "", IP: "" }, Auth: "", Description: "" };
+        this.testIP = {
+          Status: "",
+          Grids: { ID: "", Name: "", IP: "" },
+          Auth: "",
+          Description: ""
+        };
       }
     },
     getTestAttachments: function(testID) {
@@ -845,7 +860,7 @@ export default {
       axios
         .post("/api/test/" + this.testID + "/attachment", formData, {
           headers: { "Content-Type": "multipart/form-data" },
-          validateStatus: function(status) {
+          validateStatus: function() {
             return true;
           },
           onUploadProgress: function(progressEvent) {
@@ -869,7 +884,7 @@ export default {
       if (this.label != "") {
         axios
           .post("/api/test/" + this.testID + "/label/" + this.label)
-          .then(response => {
+          .then(() => {
             this.$emit("get-tests", "");
             this.loadTestData(this.testID);
           });
@@ -879,7 +894,7 @@ export default {
     deleteLabel: function(label) {
       axios
         .delete("/api/test/" + this.testID + "/label/" + label)
-        .then(response => {
+        .then(() => {
           this.$emit("get-tests", "");
           this.loadTestData(this.testID);
         });
@@ -955,7 +970,11 @@ export default {
       }
     },
     getLocustGridInfo: function(locustGrid) {
-      this.selectedLocustGrid = { ID: locustGrid.ID, Name: locustGrid.Name, IP: locustGrid.IP };
+      this.selectedLocustGrid = {
+        ID: locustGrid.ID,
+        Name: locustGrid.Name,
+        IP: locustGrid.IP
+      };
     }
   }
 };

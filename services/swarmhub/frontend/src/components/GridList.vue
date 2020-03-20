@@ -4,14 +4,21 @@
       <div class="level">
         <div class="level-left">
           <div>
-            <a class="button is-info title is-5" @click="isCreateGridModalActive = true; getGridProviders();">Create Grid</a>
-            <a class="button is-info title is-5" style="margin-left: 10px" @click="isGridTemplateModalActive = true; getGridTemplates();">Template</a>
+            <a
+              class="button is-info title is-5"
+              @click="isCreateGridModalActive = true; getGridProviders();"
+            >Create Grid</a>
+            <a
+              class="button is-info title is-5"
+              style="margin-left: 10px"
+              @click="isGridTemplateModalActive = true; getGridTemplates();"
+            >Template</a>
           </div>
         </div>
       </div>
       <div class="box">
         <div class="table-container">
-          <table class="table is-hoverable" style="width:100%" >
+          <table class="table is-hoverable" style="width:100%">
             <tr>
               <th>Name</th>
               <th>Status</th>
@@ -23,7 +30,12 @@
               <th>Slave Nodes</th>
               <th>TTL</th>
             </tr>
-            <tr v-for="grid in listOfGrids" :key="grid.ID" v-bind:class="{ 'is-selected': selectedGridID==grid.ID }" @click="$emit('selected-grid', grid.ID);"> 
+            <tr
+              v-for="grid in listOfGrids"
+              :key="grid.ID"
+              v-bind:class="{ 'is-selected': selectedGridID==grid.ID }"
+              @click="$emit('selected-grid', grid.ID);"
+            >
               <td>{{ grid.Name }}</td>
               <td>{{ grid.Status }}</td>
               <td>{{ grid.Health }}</td>
@@ -34,29 +46,50 @@
               <td>{{ grid.Nodes }}</td>
               <td>{{ grid.TTL }}</td>
             </tr>
-          </table> 
+          </table>
         </div>
       </div>
       <nav class="pagination is-right" role="navigation" aria-label="pagination">
-          <button :disabled="firstGridID===firstGridIDInList" class="pagination-previous" @click="$emit('previous-page', firstGridIDInList);">Previous</button>
-          <button :disabled="lastGridID===lastGridIDInList" class="pagination-next" @click="$emit('next-page', lastGridIDInList);">Next page</button>
+        <button
+          :disabled="firstGridID===firstGridIDInList"
+          class="pagination-previous"
+          @click="$emit('previous-page', firstGridIDInList);"
+        >Previous</button>
+        <button
+          :disabled="lastGridID===lastGridIDInList"
+          class="pagination-next"
+          @click="$emit('next-page', lastGridIDInList);"
+        >Next page</button>
       </nav>
-      <create-grid :isCreateGridModalActive="isCreateGridModalActive" :gridID="selectedGridID" :providers="providers" @is-active="updateCreateGridBool" @get-grids="getGrids"/>
-      <grid-templates :isGridTemplateModalActive="isGridTemplateModalActive" :gridTemplates="gridTemplates"  :providers="providers" @is-active="updateGridTemplateBool" @get-grids="getGrids" @get-GridTemplates="getGridTemplates"/>
-      </div> 
+      <create-grid
+        :isCreateGridModalActive="isCreateGridModalActive"
+        :gridID="selectedGridID"
+        :providers="providers"
+        @is-active="updateCreateGridBool"
+        @get-grids="getGrids"
+      />
+      <grid-templates
+        :isGridTemplateModalActive="isGridTemplateModalActive"
+        :gridTemplates="gridTemplates"
+        :providers="providers"
+        @is-active="updateGridTemplateBool"
+        @get-grids="getGrids"
+        @get-GridTemplates="getGridTemplates"
+      />
     </div>
+  </div>
 </template>
 
 <script>
-import axios from 'axios';
-import CreateGrid from '@/components/CreateGrid.vue'
-import GridTemplates from '@/components/GridTemplates.vue'
+import axios from "axios";
+import CreateGrid from "@/components/CreateGrid.vue";
+import GridTemplates from "@/components/GridTemplates.vue";
 
 export default {
-  name: 'GridList',
+  name: "GridList",
   components: {
     CreateGrid,
-    GridTemplates,
+    GridTemplates
   },
   props: {
     selectedGridID: String,
@@ -66,37 +99,43 @@ export default {
     firstGridID: String,
     lastGridID: String
   },
-  data: function () {
+  data: function() {
     return {
       isCreateGridModalActive: false,
       providers: [],
       isGridTemplateModalActive: false,
-      gridTemplates: [],
-    }
+      gridTemplates: []
+    };
   },
   methods: {
-    updateCreateGridBool (bool) {
-      this.isCreateGridModalActive = bool
+    updateCreateGridBool(bool) {
+      this.isCreateGridModalActive = bool;
     },
-    getGridProviders: function () {
+    getGridProviders: function() {
       axios
-       .get('/api/grids/providers')
-       .then(response => this.providers = response.data.Providers)
-       .catch(error => {console.log("FAILURE: ", error)});
+        .get("/api/grids/providers")
+        .then(response => (this.providers = response.data.Providers))
+        .catch(error => {
+          console.log("FAILURE: ", error);
+        });
     },
-    getGrids: function (gridID) {
-      this.$emit('get-grids', gridID)
+    getGrids: function(gridID) {
+      this.$emit("get-grids", gridID);
     },
-    getGridTemplates: function () {
+    getGridTemplates: function() {
       this.getGridProviders();
       axios
-       .get('/api/grid_templates')
-       .then(response => {this.gridTemplates = response.data})
-       .catch(error => {console.log("FAILURE: ", error)});
+        .get("/api/grid_templates")
+        .then(response => {
+          this.gridTemplates = response.data;
+        })
+        .catch(error => {
+          console.log("FAILURE: ", error);
+        });
     },
-    updateGridTemplateBool (bool) {
-      this.isGridTemplateModalActive = bool
-    },
-  },
-}
+    updateGridTemplateBool(bool) {
+      this.isGridTemplateModalActive = bool;
+    }
+  }
+};
 </script>

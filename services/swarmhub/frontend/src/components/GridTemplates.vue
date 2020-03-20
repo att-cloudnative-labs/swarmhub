@@ -459,7 +459,7 @@ export default {
       payload = JSON.parse(JSON.stringify(this.createGridData));
       axios
         .put("/api/grid_template/" + this.selectedTemplate.ID, payload)
-        .then(response => {
+        .then(() => {
           this.$emit("get-grids", "latest");
           this.$emit("get-gridTemplates", "latest");
         });
@@ -542,7 +542,10 @@ export default {
       this.templateSelected = true;
       this.createGridData = this.selectedTemplate;
       this.getGridRegions(this.createGridData.Provider);
-      this.getGridInstances(this.createGridData.Provider, this.createGridData.Region);
+      this.getGridInstances(
+        this.createGridData.Provider,
+        this.createGridData.Region
+      );
     }
   }
 };
