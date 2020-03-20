@@ -11,11 +11,17 @@ RUN GOARCH=amd64 GOOS=linux CGO_ENABLED=0 go build --installsuffix cgo --ldflags
 
 FROM node:10 as builder3
 COPY frontend/package*.json ./
-RUN npm install 
+RUN npm install
 
 FROM builder3 as builder4
 COPY frontend/ ./
-RUN npm run build
+ARG DEV=0
+RUN if [ "$DEV" = 1 ]; \
+  then \
+    npm run dev; \
+  else \
+    npm run build; \
+  fi
 
 FROM alpine:latest
 RUN apk update && apk add ca-certificates curl unzip && rm -rf /var/cache/apk/*
