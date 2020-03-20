@@ -361,9 +361,8 @@
                   <input
                     class="input"
                     type="text"
-                    v-model="newTestTitle"
+                    v-model="test.Title"
                     placeholder="Add new title here"
-                    v-bind:value="test.Title"
                   />
                 </div>
               </div>
@@ -371,13 +370,13 @@
                 <div class="control">
                   <button
                     class="button is-danger"
-                    @click="isEditTestTitleModalActive = false; editTestTitle(testID, newTestTitle);"
+                    @click="isEditTestTitleModalActive = false; editTestTitle(testID, test.Title);"
                   >Edit</button>
                 </div>
                 <div class="control">
                   <button
                     class="button"
-                    @click="isEditTestTitleModalActive = false; newTestTitle='';"
+                    @click="isEditTestTitleModalActive = false; test.Title='';"
                   >Cancel</button>
                 </div>
               </div>
@@ -523,7 +522,7 @@ export default {
   },
   data: function() {
     return {
-      test: { Status: null, Desc: "" },
+      test: { Title: "", Status: null, Desc: "" },
       testEdit: { Status: null, Desc: "" },
       grafanaConfig: { Enabled: false, BaseURL: "", DashboardUID: "" },
       testfiles: [],
