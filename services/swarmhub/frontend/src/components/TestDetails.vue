@@ -59,8 +59,8 @@
                 <select v-model="selectedGrid" @change="getLocustGridInfo(selectedGrid);">
                   <option :value="undefined" disabled style="display:none">Select one</option>
                   <option
-                    v-for="locustGrid in listOfLocustGrids"
-                    :key="locustGrid.IP"
+                    v-for="(locustGrid, index) in listOfLocustGrids"
+                    :key="index"
                     :value="locustGrid"
                   >{{locustGrid.Name}}</option>
                 </select>
@@ -90,7 +90,7 @@
               </div>
             </div>
             <p class="title is-4">&#8203; &#8203;</p>
-            <div v-for="label in test.Labels" :key="label" class="control">
+            <div v-for="(label, index) in test.Labels" :key="index" class="control">
               <span class="tag">
                 {{ label }}
                 <button class="delete is-small" v-on:click="deleteLabel(label)"></button>
@@ -146,7 +146,7 @@
                   <th>Parameter</th>
                   <th>Value</th>
                 </tr>
-                <tr v-for="config in testConfig" :key="config">
+                <tr v-for="(config, index) in testConfig" :key="index">
                   <td>{{ config.Name }}</td>
                   <td
                     v-bind:class="{ 'has-text-grey': config.Value == '*required' }"
@@ -167,7 +167,7 @@
                 <select multiple size="5">
                   <option
                     v-for="(file, index) in testfilesNoFolders"
-                    :key="file"
+                    :key="index"
                     v-bind:value="index"
                   >{{ file.Filename }}</option>
                 </select>
@@ -226,8 +226,8 @@
                 <select v-model="selectedAttachment">
                   <option :value="undefined" disabled style="display:none">Select Attachment</option>
                   <option
-                    v-for="attachment in testAttachments"
-                    :key="attachment.ID"
+                    v-for="(attachment, index) in testAttachments"
+                    :key="index"
                     v-bind:value="attachment.ID"
                   >{{ attachment.Filename }}</option>
                 </select>
@@ -243,8 +243,8 @@
                     <select v-model="selectedResult">
                       <option :value="undefined" disabled style="display:none">Select Result</option>
                       <option
-                        v-for="result in testResults"
-                        :key="result.ID"
+                        v-for="(result, index) in testResults"
+                        :key="index"
                         v-bind:value="result.Name"
                       >{{ result.Name }}</option>
                     </select>
@@ -272,7 +272,7 @@
               <div class="content">
                 <h5>Currently Deploying: {{logStatus}}</h5>
               </div>
-              <p v-for="log in logs" :key="log">{{ logPrint(log) }}</p>
+              <p v-for="(log, index) in logs" :key="index">{{ logPrint(log) }}</p>
             </section>
             <footer class="modal-card-foot">
               <button class="button" @click="showLogs(false);">Close</button>
@@ -291,8 +291,8 @@
                     <select v-model="grid" @change="toggleAddGridReady()">
                       <option :value="undefined" style="display:none" disabled>Select grid for test</option>
                       <option
-                        v-for="_grid in listOfGrids"
-                        :key="_grid.ID"
+                        v-for="(_grid, index) in listOfGrids"
+                        :key="index"
                         :value="_grid"
                       >{{_grid.Name}}</option>
                     </select>
@@ -305,7 +305,7 @@
                 </div>
               </div>
               <label class="label" style="padding-top:0px">Selected Grid(s):</label>
-              <div v-for="grid in selectedGrids" :key="grid.ID">
+              <div v-for="(grid, index) in selectedGrids" :key="index">
                 <div class="block">
                   <span class="tag is-white" style="font-size:15px">
                     {{grid.Name}}
@@ -529,6 +529,8 @@ export default {
   },
   data: function() {
     return {
+      clients: "",
+      hatch_rate: "",
       test: { Title: "", Status: null, Desc: "" },
       testEdit: { Status: null, Desc: "" },
       grafanaConfig: { Enabled: false, BaseURL: "", DashboardUID: "" },
@@ -892,12 +894,10 @@ export default {
       this.label = "";
     },
     deleteLabel: function(label) {
-      axios
-        .delete("/api/test/" + this.testID + "/label/" + label)
-        .then(() => {
-          this.$emit("get-tests", "");
-          this.loadTestData(this.testID);
-        });
+      axios.delete("/api/test/" + this.testID + "/label/" + label).then(() => {
+        this.$emit("get-tests", "");
+        this.loadTestData(this.testID);
+      });
     },
     editLocustConfig: function() {
       var payload;
