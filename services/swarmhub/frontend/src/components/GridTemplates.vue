@@ -157,6 +157,7 @@
                     v-model="createGridData.SlaveNodes"
                     class="input"
                     type="number"
+                    min="0"
                     placeholder="Number of slaves"
                   />
                 </div>
@@ -174,6 +175,7 @@
                     v-model="createGridData.TTL"
                     class="input"
                     type="number"
+                    min="0"
                     placeholder="Time in minutes until the grid is deleted."
                   />
                 </div>
@@ -343,7 +345,7 @@
                 <div class="field-body">
                   <div class="field is-narrow">
                     <div class="control">
-                      <input class="input" type="text" v-model="selectedTemplate.SlaveNodes" />
+                      <input class="input" type="number" min="0" v-model="selectedTemplate.SlaveNodes" />
                     </div>
                   </div>
                 </div>
@@ -355,7 +357,7 @@
                 <div class="field-body">
                   <div class="field is-narrow">
                     <div class="control">
-                      <input class="input" type="text" v-model="selectedTemplate.TTL" />
+                      <input class="input" type="number" min="0" v-model="selectedTemplate.TTL" />
                     </div>
                   </div>
                 </div>
