@@ -59,8 +59,8 @@
                 <select v-model="selectedGrid" @change="getLocustGridInfo(selectedGrid);">
                   <option :value="undefined" disabled style="display:none">Select one</option>
                   <option
-                    v-for="(locustGrid, index) in listOfLocustGrids"
-                    :key="index"
+                    v-for="locustGrid in listOfLocustGrids"
+                    :key="locustGrid.IP"
                     :value="locustGrid"
                   >{{locustGrid.Name}}</option>
                 </select>
@@ -146,7 +146,7 @@
                   <th>Parameter</th>
                   <th>Value</th>
                 </tr>
-                <tr v-for="(config, index) in testConfig" :key="index">
+                <tr v-for="config in testConfig" :key="config.Name">
                   <td>{{ config.Name }}</td>
                   <td
                     v-bind:class="{ 'has-text-grey': config.Value == '*required' }"
@@ -167,7 +167,7 @@
                 <select multiple size="5">
                   <option
                     v-for="(file, index) in testfilesNoFolders"
-                    :key="index"
+                    :key="file.Filename"
                     v-bind:value="index"
                   >{{ file.Filename }}</option>
                 </select>
@@ -226,8 +226,8 @@
                 <select v-model="selectedAttachment">
                   <option :value="undefined" disabled style="display:none">Select Attachment</option>
                   <option
-                    v-for="(attachment, index) in testAttachments"
-                    :key="index"
+                    v-for="attachment in testAttachments"
+                    :key="attachment.ID"
                     v-bind:value="attachment.ID"
                   >{{ attachment.Filename }}</option>
                 </select>
@@ -243,8 +243,8 @@
                     <select v-model="selectedResult">
                       <option :value="undefined" disabled style="display:none">Select Result</option>
                       <option
-                        v-for="(result, index) in testResults"
-                        :key="index"
+                        v-for="result in testResults"
+                        :key="result.ID"
                         v-bind:value="result.Name"
                       >{{ result.Name }}</option>
                     </select>
@@ -272,7 +272,7 @@
               <div class="content">
                 <h5>Currently Deploying: {{logStatus}}</h5>
               </div>
-              <p v-for="(log, index) in logs" :key="index">{{ logPrint(log) }}</p>
+              <p v-for="log in logs" :key="log.ID">{{ logPrint(log) }}</p>
             </section>
             <footer class="modal-card-foot">
               <button class="button" @click="showLogs(false);">Close</button>
@@ -291,8 +291,8 @@
                     <select v-model="grid" @change="toggleAddGridReady()">
                       <option :value="undefined" style="display:none" disabled>Select grid for test</option>
                       <option
-                        v-for="(_grid, index) in listOfGrids"
-                        :key="index"
+                        v-for="_grid in listOfGrids"
+                        :key="_grid.ID"
                         :value="_grid"
                       >{{_grid.Name}}</option>
                     </select>
@@ -305,7 +305,7 @@
                 </div>
               </div>
               <label class="label" style="padding-top:0px">Selected Grid(s):</label>
-              <div v-for="(grid, index) in selectedGrids" :key="index">
+              <div v-for="grid in selectedGrids" :key="grid.ID">
                 <div class="block">
                   <span class="tag is-white" style="font-size:15px">
                     {{grid.Name}}
