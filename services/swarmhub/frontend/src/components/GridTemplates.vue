@@ -467,12 +467,9 @@ export default {
     deleteGridTemplate: function() {
       axios
         .delete("/api/grid_template/" + this.selectedTemplate.ID)
-        .then(response => {
+        .then(() => {
           this.$emit("get-grids", "latest");
           this.$emit("get-gridTemplates", "latest");
-          if (response.status == 204) {
-            this.clearGridSelection();
-          }
         });
       this.clearGridSelection();
       this.selectExistingClicked = false;
