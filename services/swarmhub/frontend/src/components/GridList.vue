@@ -74,7 +74,7 @@
         :providers="providers"
         @is-active="updateGridTemplateBool"
         @get-grids="getGrids"
-        @get-GridTemplates="getGridTemplates"
+        @get-grid-templates="getGridTemplates"
       />
     </div>
   </div>

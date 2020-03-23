@@ -345,7 +345,12 @@
                 <div class="field-body">
                   <div class="field is-narrow">
                     <div class="control">
-                      <input class="input" type="number" min="0" v-model="selectedTemplate.SlaveNodes" />
+                      <input
+                        class="input"
+                        type="number"
+                        min="0"
+                        v-model="selectedTemplate.SlaveNodes"
+                      />
                     </div>
                   </div>
                 </div>
@@ -444,7 +449,7 @@ export default {
       payload = JSON.parse(JSON.stringify(this.createGridData));
       axios.post("/api/grid_template", payload).then(response => {
         this.$emit("get-grids", "latest");
-        this.$emit("get-gridTemplates", "latest");
+        this.$emit("get-grid-templates");
         if (response.status == 201) {
           this.clearGridSelection();
         }
@@ -463,7 +468,7 @@ export default {
         .put("/api/grid_template/" + this.selectedTemplate.ID, payload)
         .then(() => {
           this.$emit("get-grids", "latest");
-          this.$emit("get-gridTemplates", "latest");
+          this.$emit("get-grid-templates");
         });
     },
     deleteGridTemplate: function() {
@@ -471,7 +476,7 @@ export default {
         .delete("/api/grid_template/" + this.selectedTemplate.ID)
         .then(() => {
           this.$emit("get-grids", "latest");
-          this.$emit("get-gridTemplates", "latest");
+          this.$emit("get-grid-templates");
         });
       this.clearGridSelection();
       this.selectExistingClicked = false;
