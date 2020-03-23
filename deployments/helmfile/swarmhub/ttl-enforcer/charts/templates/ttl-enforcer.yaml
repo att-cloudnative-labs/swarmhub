@@ -1,0 +1,46 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ttl-enforcer
+  labels:
+    app: ttl-enforcer
+spec:
+  replicas: {{ .Values.replica }}
+  selector:
+    matchLabels:
+      app: ttl-enforcer
+  template:
+    metadata:
+      labels:
+        app: ttl-enforcer
+    spec:
+      containers:
+      - name: ttl-enforcer
+        image: {{ .Values.dockerImage }}
+        {{ if .Values.dockerhub }}
+        imagePullPolicy: Always
+        {{ else }}
+        imagePullPolicy: IfNotPresent
+        {{ end }}
+        env:
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: cloud-credentials
+                key: aws_access_key
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: cloud-credentials
+                key: aws_secret_access_key
+          - name: AWS_S3_BUCKET_TFSTATE
+            valueFrom:
+              configMapKeyRef:
+                key: aws_s3_bucket_tfstate
+                name: deployment-config
+          - name: AWS_S3_REGION
+            valueFrom:
+              configMapKeyRef:
+                key: aws_s3_region
+                name: deployment-config

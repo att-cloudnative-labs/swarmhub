@@ -141,6 +141,9 @@ func updateDeployerStatus(m *stan.Msg) {
 
 	if deployedStatus.DeploymentType == "Test" {
 		db.UpdateTestStatus(deployedStatus.ID, deployedStatus.Status)
+		if deployedStatus.Status == "Error" {
+			db.UpdateGridStatus(deployedStatus.Params["GRID_ID"], "Available")
+		}
 	} else if deployedStatus.DeploymentType == "Grid" || deployedStatus.DeploymentType == "DeleteGrid" {
 		db.UpdateGridStatus(deployedStatus.ID, deployedStatus.Status)
 		updateTestStatusFromGridStatus(deployedStatus.ID, deployedStatus.Status)
@@ -205,7 +208,7 @@ func createGrafanaSnapshot(m *stan.Msg) {
 		return
 	}
 
-	name, gridID, startTime, endTime, err := db.InfoForGrafana(testID)
+	name, startTime, endTime, err := db.InfoForGrafana(testID)
 	if err != nil {
 		err = fmt.Errorf("failed to get InfoForGrafana: %v", err)
 		fmt.Println(err)
@@ -213,7 +216,8 @@ func createGrafanaSnapshot(m *stan.Msg) {
 	}
 
 	go func() {
-		err = generateGrafanaSnapshot(name, testID, gridID, startTime, endTime)
+		// TODO: confirm if gridID is needed for generating snapshots
+		err = generateGrafanaSnapshot(name, testID, "", startTime, endTime)
 		if err != nil {
 			err = fmt.Errorf("failed to generateGrafanaSnapshot: %v", err)
 			fmt.Println(err)

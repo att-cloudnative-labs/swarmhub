@@ -31,7 +31,7 @@ variable "locust_count" {
   default     = 0
 }
 
-variable "test_name" {
+variable "test_id" {
   type        = string
   description = "Test ID / Script ID"
   default     = ""

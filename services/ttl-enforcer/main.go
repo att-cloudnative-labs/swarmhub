@@ -123,15 +123,15 @@ func setConfig() {
 		sleep = time.Duration(5 * time.Minute)
 	}
 	tfstatebucket = registry.GetString("AWS_S3_BUCKET_TFSTATE")
-	if natsURLRaw == "" {
+	if tfstatebucket == "" {
 		panic("AWS_S3_BUCKET_TFSTATE not defined")
 	}
 	tfstateDirPath = registry.GetString("TFSTATE_DIR_PATH")
-	if natsURLRaw == "" {
+	if tfstateDirPath == "" {
 		panic("TFSTATE_DIR_PATH not defined")
 	}
 	scriptDirPath = registry.GetString("SCRIPT_DIR_PATH")
-	if natsURLRaw == "" {
+	if scriptDirPath == "" {
 		panic("SCRIPT_DIR_PATH not definedL")
 	}
 }

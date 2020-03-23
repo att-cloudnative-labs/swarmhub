@@ -105,13 +105,14 @@ func generateGrafanaSnapshot(name, testID, gridID string, startTime, endTime tim
 }
 
 func generateGrafanaSnapshotFromTestID(testID string) error {
-	name, gridID, startTime, endTime, err := db.InfoForGrafana(testID)
+	name, startTime, endTime, err := db.InfoForGrafana(testID)
 	if err != nil {
 		err = fmt.Errorf("failed to get InfoForGrafana: %v", err)
 		return err
 	}
 
-	err = generateGrafanaSnapshot(name, testID, gridID, startTime, endTime)
+	// TODO: confirm if gridID is needed for generating snapshots
+	err = generateGrafanaSnapshot(name, testID, "", startTime, endTime)
 	if err != nil {
 		err = fmt.Errorf("failed to generateGrafanaSnapshot: %v", err)
 		return err

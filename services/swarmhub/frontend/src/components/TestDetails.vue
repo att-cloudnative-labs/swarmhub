@@ -43,14 +43,31 @@
             class="button is-link"
             @click="isDeployTestModalActive = true; getGrids();"
           >Launch</button>
+        </div>
+        <div class="block">
           <form
             v-if="testIP.Status=='Success'"
-            method="post"
-            v-bind:action="'https://' + testIP.IP  + '/login'"
+            method="get"
+            v-bind:action="'https://' + selectedLocustGrid.IP  /*+ '/login'*/"
             target="_blank"
           >
-            <input type="hidden" id="token" name="authToken" v-bind:value="testIP.Auth" />
-            <button type="submit" id="locust" class="button is-primary">Master Locust</button>
+           <div class="control">
+              <div v-if="listOfLocustGrids.length > 1" class="select">
+                <select
+                  v-model="selectedGrid"
+                  @change="getLocustGridInfo(selectedGrid);"
+                >
+                  <option :value="undefined" disabled style="display:none">Select one</option>
+                  <option
+                    v-for="locustGrid in listOfLocustGrids"
+                    :key="locustGrid.IP"
+                    :value="locustGrid"
+                  >{{locustGrid.Name}}</option>
+                </select>
+              </div>
+              <input type="hidden" id="token" name="authToken" v-bind:value="testIP.Auth" />
+              <button :disabled="!selectedLocustGrid.IP" type="submit" id="locust" class="button is-primary">Open Locust</button>
+            </div>
           </form>
         </div>
         <div class="testDetails">
@@ -261,11 +278,11 @@
           <div class="modal-content">
             <div class="box">
               <div class="field">
-                <label class="label">Grid</label>
+                <label class="label">Choose Grid(s):</label>
                 <div class="control">
                   <div class="select">
-                    <select v-model="grid" @change="validateTest();">
-                      <option :value="undefined" disabled style="display:none">Select grid for test</option>
+                    <select v-model="grid" @change="toggleAddGridReady()">
+                      <option :value="undefined" style="display:none" disabled>Select grid for test</option>
                       <option
                         v-for="_grid in listOfGrids"
                         :key="_grid.ID"
@@ -273,14 +290,34 @@
                       >{{_grid.Name}}</option>
                     </select>
                   </div>
+                  <button v-if="addGridReady" class="button is-white" @click="selectGrid()">
+                    <span class="icon has-text-success">
+                      <font-awesome-icon icon="plus-circle" />
+                    </span>
+                  </button>
                 </div>
               </div>
-              <button
-                v-bind:disabled="!testDeployReady"
-                class="button is-success"
-                @click="deployTest();"
-              >Deploy</button>
-              <button class="button" @click="clearDeployModal();">Cancel</button>
+              <label class="label" style="padding-top:0px">Selected Grid(s):</label>
+              <div v-for="grid in selectedGrids" :key="grid.ID">
+                <div class="block">
+                  <span class="tag is-white" style="font-size:15px">
+                    {{grid.Name}}
+                    <button class="button is-white" @click="removeSelectedGrid(grid)">
+                      <span class="icon has-text-danger">
+                        <font-awesome-icon icon="minus-circle" />
+                      </span>
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <div style="margin-top:15px">
+                <button
+                  v-bind:disabled="!testDeployReady"
+                  class="button is-success"
+                  @click="deployTest();"
+                >Deploy</button>
+                <button class="button" @click="clearDeployModal();">Cancel</button>
+              </div>
             </div>
           </div>
         </div>
@@ -470,7 +507,7 @@ export default {
   watch: {
     testID: function(newVal) {
       this.testIP.Status = "";
-      this.testIP.IP = "";
+      this.testIP.Grids =  { ID: "", Name: "", IP: "" };
       this.testIP.Auth = "";
       this.testIP.Description = "";
       this.loadTestData(newVal);
@@ -518,11 +555,15 @@ export default {
       logStatus: "",
       logs: "",
       listOfGrids: [],
-      grid: {},
+      grid: undefined,
+      selectedGrids: [],
+      addGridReady: false,
       region: "us-east-1",
       testDeployReady: false,
       startAutomatically: false,
-      testIP: { Status: "", IP: "", Auth: "", Description: "" },
+      testIP: { Status: "", Grids: { ID: "", Name: "", IP: "" }, Auth: "", Description: "" },
+      selectedLocustGrid: { ID: "", Name: "", IP: "" },
+      listOfLocustGrids: [],
       locust_url: null,
       locust_token: null,
       locust_config_id: "",
@@ -532,6 +573,19 @@ export default {
     };
   },
   methods: {
+    reset: function() {
+      this.testAttachments = [];
+      this.selectedAttachment = undefined;
+      this.locustConfig = {};
+      this.selectedLocustGrid = { ID: "", Name: "", IP: "" };
+      this.testConfig = [
+        { Name: "clients", Value: "*required" },
+        { Name: "hatch-rate", Value: "*required" },
+        { Name: "run-time", Value: "3600" },
+        { Name: "loglevel", Value: "ERROR" },
+        { Name: "load-profile", Value: "[(0,0), (10m,100%), (+15m,0%)]" }
+      ];
+    },
     getGrafanaConfigs: function() {
       fetch("/api/grafana/info").then(response => {
         if (response.status === 200) {
@@ -583,8 +637,7 @@ export default {
       this.uploadAttachment(document.getElementById("attachmentid").files[0]);
     },
     loadTestData: function(testid) {
-      this.testAttachments = [];
-      this.selectedAttachment = undefined;
+      this.reset();
       if (testid) {
         axios
           .get("/api/test?id=" + testid)
@@ -724,22 +777,29 @@ export default {
       }
     },
     deployTest: function() {
+      var gridsToDeploy = [];
+      this.selectedGrids.map(grid => {
+        gridsToDeploy.push({grid_id: grid.ID, grid_region: grid.Region})
+      })
+
       var path, body;
+
       path = "/api/test/" + this.test.ID + "/start";
       body = {
-        GridID: this.grid.ID,
-        GridRegion: this.grid.Region,
-        StartAutomatically: this.startAutomatically
+        grids: gridsToDeploy,
+        start_automatically: this.startAutomatically
       };
       axios.post(path, body).then(response => {
         this.isDeployTestModalActive = false;
         this.loadTestData(this.test.ID);
+        this.selectedGrids = [];
         this.$emit("get-tests", "");
       });
     },
     clearDeployModal: function() {
       this.grid = {};
       this.isDeployTestModalActive = false;
+      this.selectedGrids = [];
     },
     getTestLink: function(testID) {
       var getLink = false;
@@ -753,13 +813,20 @@ export default {
         default:
           getLink = false;
       }
-
       if (getLink) {
         axios
           .get("/api/test/" + testID + "/ip")
-          .then(response => (this.testIP = response.data));
+          .then(response => {
+            this.testIP = response.data;
+            this.listOfLocustGrids = response.data.Grids;
+
+            // if test is only launched in one grid, select it automatically
+            if (this.listOfLocustGrids.length === 1){
+              this.getLocustGridInfo(this.listOfLocustGrids[0]);
+            }
+          });
       } else {
-        this.testIP = { Status: "", IP: "", Auth: "", Description: "" };
+        this.testIP = { Status: "", Grids: { ID: "", Name: "", IP: "" }, Auth: "", Description: "" };
       }
     },
     getTestAttachments: function(testID) {
@@ -860,6 +927,36 @@ export default {
           Value: "[(0,0), (10m,100%), (+15m,0%)]"
         }
       ];
+    },
+    selectGrid: function() {
+      if (this.grid) {
+        if (this.grid.ID != "") {
+          this.testDeployReady = true;
+          const newList = this.listOfGrids.filter(i => i.ID !== this.grid.ID);
+          this.listOfGrids = newList;
+          this.selectedGrids.push(this.grid);
+          this.grid = {};
+          this.addGridReady = false;
+        } else {
+          this.testDeployReady = false;
+        }
+      }
+    },
+    removeSelectedGrid: function(grid) {
+      let newSelectedGrids = this.selectedGrids.filter(i => i.ID !== grid.ID);
+      this.selectedGrids = newSelectedGrids;
+      this.listOfGrids.push(grid);
+      if (this.selectedGrids.length === 0) {
+        this.testDeployReady = false;
+      }
+    },
+    toggleAddGridReady: function() {
+      if (this.grid) {
+        this.addGridReady = true;
+      }
+    },
+    getLocustGridInfo: function(locustGrid) {
+      this.selectedLocustGrid = { ID: locustGrid.ID, Name: locustGrid.Name, IP: locustGrid.IP };
     }
   }
 };

@@ -18,9 +18,11 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM alpine:latest
-RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+RUN apk update && apk add ca-certificates curl unzip && rm -rf /var/cache/apk/*
 RUN update-ca-certificates
 RUN mkdir -p /app
+RUN mkdir -p /tfstate
+ENV TFSTATE_DIR_PATH /tfstate
 WORKDIR /app
 COPY --from=builder2 /main /app/main
 COPY --from=builder2 /app/swarmhub/settings.yaml /app/settings.yaml
@@ -31,5 +33,8 @@ COPY --from=builder4 src/assets/attlogo.svg /var/www/swarmhub/static/images/attl
 COPY --from=builder4 static/html/login.html /var/www/swarmhub/html/login.html
 COPY --from=builder4 static/html/logout.html /var/www/swarmhub/html/logout.html
 COPY --from=builder4 static/html/base.html /var/www/swarmhub/html/base.html
+
+RUN curl https://releases.hashicorp.com/terraform/0.12.20/terraform_0.12.20_linux_amd64.zip -o terraform.zip
+RUN unzip terraform.zip -d /usr/local/bin && rm terraform.zip
 
 ENTRYPOINT ["/app/main"]

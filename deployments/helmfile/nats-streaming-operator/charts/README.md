@@ -1,0 +1,1 @@
+helm install nats . -n swarmhub

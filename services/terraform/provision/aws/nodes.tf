@@ -4,15 +4,6 @@ locals {
   }
 }
 
-data "aws_availability_zones" "az" {
-}
-
-resource "aws_default_subnet" "default" {
-  availability_zone = data.aws_availability_zones.az.names[count.index]
-  tags              = local.cluster_id_tag
-  count             = length(data.aws_availability_zones.az.names)
-}
-
 resource "aws_security_group" "allow-all" {
   name        = "rke-default-security-group-${var.grid_id}"
   description = "rke"
@@ -40,7 +31,6 @@ resource "aws_instance" "rke-node-master" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.kube_master_instance_type
   key_name               = aws_key_pair.rke-node-key.id
-  iam_instance_profile   = aws_iam_instance_profile.rke-aws.name
   vpc_security_group_ids = [aws_security_group.allow-all.id]
   tags = merge(local.cluster_id_tag, map(
     "Name", "${var.grid_id}-k8s-master",
@@ -68,7 +58,6 @@ resource "aws_instance" "rke-node-slave-locust-master" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.master_instance_type
   key_name               = aws_key_pair.rke-node-key.id
-  iam_instance_profile   = aws_iam_instance_profile.rke-aws.name
   vpc_security_group_ids = [aws_security_group.allow-all.id]
   tags = merge(local.cluster_id_tag, map(
     "Name", "${var.grid_id}-k8s-worker-locust-master",
@@ -98,7 +87,6 @@ resource "aws_instance" "rke-node-slave-locust-slave" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.slave_instance_type
   key_name               = aws_key_pair.rke-node-key.id
-  iam_instance_profile   = aws_iam_instance_profile.rke-aws.name
   vpc_security_group_ids = [aws_security_group.allow-all.id]
   tags = merge(local.cluster_id_tag, map(
     "Name", "${var.grid_id}-k8s-worker-locust-slave-${count.index}",

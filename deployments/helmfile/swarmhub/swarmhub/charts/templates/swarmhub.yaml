@@ -1,0 +1,103 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swarmhub-nodeport
+spec:
+  type: NodePort
+  ports:
+  - port: 443
+    targetPort: 8443
+    protocol: TCP
+    nodePort: 30000
+  selector:
+    app: swarmhub
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: swarmhub
+  name: swarmhub
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: swarmhub
+  template:
+    metadata:
+      labels:
+        app: swarmhub
+    spec:
+      containers:
+      - env:
+        - name: JWTSIGNINGKEY
+          valueFrom:
+            secretKeyRef:
+              key: jwt-key
+              name: jwt-key
+        - name: AWS_S3_BUCKET_LOCUSTFILES
+          valueFrom:
+            configMapKeyRef:
+              key: aws_s3_bucket_locustfiles
+              name: deployment-config
+        - name: AWS_S3_BUCKET_TFSTATE
+          valueFrom:
+            configMapKeyRef:
+              key: aws_s3_bucket_tfstate
+              name: deployment-config
+        - name: AWS_S3_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_s3_secret_access_key
+              name: cloud-credentials
+        - name: AWS_S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_s3_access_key
+              name: cloud-credentials
+        - name: AWS_S3_REGION
+          valueFrom:
+            configMapKeyRef:
+              key: aws_s3_region
+              name: deployment-config
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_secret_access_key
+              name: cloud-credentials
+        - name: AWS_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_access_key
+              name: cloud-credentials
+        image: {{ .Values.dockerImage }}
+        {{ if .Values.dockerhub }}
+        imagePullPolicy: Always
+        {{ else }}
+        imagePullPolicy: IfNotPresent
+        {{ end }}
+        name: swarmhub
+        ports:
+        - containerPort: 8443
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /app/tls
+          name: tls-volume
+        - mountPath: /app/localusers.csv
+          subPath: localusers.csv
+          name: localusers-volume
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: localusers-volume
+        secret:
+          defaultMode: 420
+          secretName: localusers
+      - name: tls-volume
+        secret:
+          defaultMode: 420
+          secretName: tls

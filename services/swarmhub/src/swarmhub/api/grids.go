@@ -96,7 +96,7 @@ func StartGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func stopGrid(id string) error {
-	message := &natsMessage{ID: id, DeploymentType: "Grid"}
+	message := &natsMessage{ID: id, DeploymentType: "CancelGrid"}
 	b, err := json.Marshal(message)
 	if err != nil {
 		fmt.Println("Not publishing nats message. Failed to convert to json: ", err.Error())
@@ -226,12 +226,14 @@ func DeleteGrid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		} */
 	}
 
-	if status == "Deployed" || status == "Available" {
-		err := deleteDeployedGrid(id)
-		// TODO: "This is a test to see if it prints."
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+	if status == "Deployed" || status == "Available" || status == "Ready" || status == "Error" || status == "Expired" {
+		if status == "Deployed" || status == "Available" || status == "Ready" { // only send delete command for these state
+			err := deleteDeployedGrid(id)
+			// TODO: "This is a test to see if it prints."
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 		err = db.DeleteGridByID(id)
 		if err != nil {

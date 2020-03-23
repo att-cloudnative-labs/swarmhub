@@ -1,0 +1,55 @@
+repositories:
+- name: incubator
+  url: "https://kubernetes-charts-incubator.storage.googleapis.com/"
+
+releases:
+
+- name: "swarmhub-init"
+  namespace: "swarmhub"
+  chart: incubator/raw
+  version: "0.1.0"
+  wait: true
+  installed: true
+  values:
+  - resources:
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: jwt-key
+      type: Opaque
+      data:
+        jwt-key: {{ readFile "./files/jwt-key" }}
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: localusers
+      type: Opaque
+      data:
+        localusers.csv: {{ readFile "./files/localusers.csv" | b64enc }}
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: tls
+      type: Opaque
+      data:
+        server.key: {{ readFile "./files/server.key" | b64enc }}
+        server.crt: {{ readFile "./files/server.crt" | b64enc }}
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: cloud-credentials
+      type: Opaque
+      data:
+        aws_access_key: {{ requiredEnv "AWS_ACCESS_KEY" | b64enc }}
+        aws_secret_access_key: {{ requiredEnv "AWS_SECRET_ACCESS_KEY" | b64enc }}
+        aws_s3_access_key: {{ requiredEnv "AWS_S3_ACCESS_KEY" | b64enc }}
+        aws_s3_secret_access_key: {{ requiredEnv "AWS_S3_SECRET_ACCESS_KEY" | b64enc }}
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: deployment-config
+        namespace: swarmhub
+      data:
+        aws_s3_bucket_locustfiles: {{ requiredEnv "AWS_S3_BUCKET_LOCUSTFILES" }}
+        aws_s3_bucket_tfstate: {{ requiredEnv "AWS_S3_BUCKET_TFSTATE" }}
+        aws_s3_region: {{ requiredEnv "AWS_S3_REGION" }}

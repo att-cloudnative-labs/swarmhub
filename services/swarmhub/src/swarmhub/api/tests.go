@@ -23,6 +23,11 @@ import (
 var defaultStart time.Time
 var defaultEnd time.Time
 
+type ReqGrid struct {
+	GridID     string `json:"grid_id"`
+	GridRegion string `json:"grid_region"`
+}
+
 func init() {
 	dateLayout := "2006-01-02 15:04:05"
 	startTimeString := "2000-01-01 00:00:00"
@@ -52,23 +57,23 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	var body struct {
-		GridID             string
-		StartAutomatically bool
-		GridRegion         string
+	var reqBody struct {
+		ReqGrids           []ReqGrid `json:"grids"`
+		StartAutomatically bool      `json:"start_automatically"`
 	}
+	json.NewDecoder(r.Body).Decode(&reqBody)
 
-	json.NewDecoder(r.Body).Decode(&body)
+	for _, reqGrid := range reqBody.ReqGrids {
+		gridReady, err := validateCanRunGrid(reqGrid.GridID)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("Unable to validate grid state: %s - %v", reqGrid.GridID, err.Error())))
+			return
+		}
 
-	gridReady, err := validateCanRunGrid(body.GridID)
-	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Unable to validate grid state: %v", err.Error())))
-		return
-	}
-
-	if gridReady == false {
-		w.Write([]byte("This grid is not in a deployed state."))
-		return
+		if gridReady == false {
+			w.Write([]byte(fmt.Sprintf("This grid is not in a deployed state: %s", reqGrid.GridID)))
+			return
+		}
 	}
 
 	testID := ps.ByName("id")
@@ -84,53 +89,82 @@ func StartTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	gridID := body.GridID
-	gridRegion := body.GridRegion
-	gridStartAuto := strconv.FormatBool(body.StartAutomatically)
-
-	params := map[string]string{
-		"GRID_ID":          gridID,
-		"GRID_REGION":      gridRegion,
-		"GRID_AUTOSTART":   gridStartAuto,
-		"SCRIPT_ID":        scriptID,
-		"SCRIPT_FILE_NAME": scriptFileName,
-		"LOCUST_COUNT":     fmt.Sprint(locustConfig.Clients),
-		"HATCH_RATE":       fmt.Sprint(locustConfig.HatchRate),
-		"DEPLOYMENT":       "true",
-	}
-	message := &natsMessage{ID: testID, Params: params, DeploymentType: "Test"}
-	b, err := json.Marshal(message)
-	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Not publishing nats message. Failed to convert to json: %v", err.Error())))
-		return
-	}
-
 	err = db.UpdateTestStatus(ps.ByName("id"), "Queued")
 	if err != nil {
 		fmt.Println("Was unable to update test status! ", err.Error())
 		return
 	}
 
-	err = sendStartCmd(b)
-	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Was unable to send start command! %v", err.Error())))
-		db.UpdateTestStatus(ps.ByName("id"), "Ready")
-		return
-	}
+	gridClientsMap := make(map[string]int)
+	DistributeClientsPerGrid(int(locustConfig.Clients), reqBody.ReqGrids, gridClientsMap)
 
-	err = db.UpdateTestIDinGrid(gridID, testID)
-	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Wasn't able to update Test ID in grid: %v", err.Error())))
-		return
-	}
+	for _, grid := range reqBody.ReqGrids {
+		gridID := grid.GridID
+		gridRegion, err := db.GetGridRegion(gridID)
+		gridStartAuto := strconv.FormatBool(reqBody.StartAutomatically)
 
-	err = db.UpdateGridStatus(gridID, "Deployed")
-	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Wasn't able to update Grid ID status: %v", err.Error())))
-		return
+		params := map[string]string{
+			"GRID_ID":          gridID,
+			"GRID_REGION":      gridRegion,
+			"GRID_AUTOSTART":   gridStartAuto,
+			"TEST_ID":          testID,
+			"SCRIPT_ID":        scriptID,
+			"SCRIPT_FILE_NAME": scriptFileName,
+			"LOCUST_COUNT":     fmt.Sprint(gridClientsMap[gridID]),
+			"HATCH_RATE":       fmt.Sprint(locustConfig.HatchRate),
+			"DEPLOYMENT":       "true",
+		}
+		message := &natsMessage{ID: testID, Params: params, DeploymentType: "Test"}
+		b, err := json.Marshal(message)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("Not publishing nats message. Failed to convert to json: %v", err.Error())))
+			return
+		}
+
+		err = sendStartCmd(b)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("Was unable to send start command! %v", err.Error())))
+			db.UpdateTestStatus(ps.ByName("id"), "Ready")
+			return
+		}
+
+		err = db.UpdateTestIDinGrid(gridID, testID)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("Wasn't able to update Test ID in grid: %s - %v", gridID, err.Error())))
+			return
+		}
+
+		err = db.UpdateGridStatus(gridID, "Deployed")
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("Wasn't able to update Grid ID status: %s - %v", gridID, err.Error())))
+			return
+		}
+
 	}
 
 	w.Write([]byte("sent a start command for test id: " + ps.ByName("id")))
+}
+
+func DistributeClientsPerGrid(clients int, grids []ReqGrid, gridClientsMap map[string]int) {
+	gridCount := len(grids)
+	clientsPerGrid := make([]int, gridCount)
+
+	perGrid := clients / gridCount
+	remainingUsers := clients % gridCount
+
+	for i := 0; i < gridCount; i++ {
+		clientsPerGrid[i] = perGrid
+	}
+
+	for i := 0; i < remainingUsers; i++ {
+		clientsPerGrid[i] += 1
+	}
+
+	index := 0
+	for _, grid := range grids {
+		gridClientsMap[grid.GridID] = clientsPerGrid[index]
+		index++
+	}
 }
 
 func UploadTestAttachment(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -249,47 +283,51 @@ func DuplicateTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 // CancelTestDeployment cancels the test, marks it back as Ready, and cleans up the grid
 func CancelTestDeployment(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	testID := ps.ByName("id")
-	gridID, gridRegion, err := db.GetGridByTestID(testID)
+	grids, err := db.GetGridsByTestId(testID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to send stop command for: " + testID + " " + err.Error()))
-		return
-	}
-	params := map[string]string{
-		"GRID_ID":            gridID,
-		"GRID_REGION":        gridRegion,
-		"DESTROY_DEPLOYMENT": "true",
-	}
-
-	message := &natsMessage{ID: testID, DeploymentType: "Test", Params: params}
-	b, err := json.Marshal(message)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Println("Not publishing nats message. Failed to convert to json: ", err.Error())
-		return
-	}
-	err = sendStopCmd(b)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to send stop command for: " + testID))
+		message := fmt.Sprintf("Failed to send stop command for: " + testID + " " + err.Error())
+		fmt.Println(message)
+		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
 
-	// since there is no need to wait for the test cancellation to completely finish
-	// go ahead and update the test status so it can be redeployed if need be.
-	err = db.UpdateTestStatus(testID, "Ready")
-	if err != nil {
-		fmt.Println("Was unable to update test status!", err.Error())
-	}
-
-	time.Sleep(1 * time.Second) // give some time to help ensure the stop command is run
-	err = stopTest(gridID, gridRegion, testID, "CancelTest")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to stopTest within CancelTestDeployment: " + err.Error()))
+	if len(grids) < 1 {
+		message := fmt.Sprintf("Did not get any grids associated to: " + testID)
+		fmt.Println(message)
+		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
 
+	for _, grid := range grids {
+		params := map[string]string{
+			"GRID_ID":            grid.ID,
+			"GRID_REGION":        grid.Region,
+			"DESTROY_DEPLOYMENT": "true",
+		}
+
+		message := &natsMessage{ID: testID, DeploymentType: "CancelTest", Params: params}
+		b, err := json.Marshal(message)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Println("Not publishing nats message. Failed to convert to json: ", err.Error())
+			return
+		}
+		err = sendStopCmd(b)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Failed to send stop command for: " + testID))
+			return
+		}
+		err = db.UpdateTestIDinGrid(grid.ID, "")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("Wasn't able to update Test ID in grid: %v", err.Error())))
+			return
+		}
+
+	}
+
+	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("sent a stop command for test id: " + ps.ByName("id")))
 }
 
@@ -297,25 +335,33 @@ func CancelTestDeployment(w http.ResponseWriter, r *http.Request, ps httprouter.
 // the grids database. Status changes are taken care of in the deployer microservice.
 func StopTest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	testID := ps.ByName("id")
-	gridID, gridRegion, err := db.GetGridByTestID(testID)
+	grids, err := db.GetGridsByTestId(testID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to send stop command for: " + ps.ByName("id") + " " + err.Error()))
+		message := fmt.Sprintf("Failed to stop test: " + err.Error())
+		fmt.Println(message + " for test id: " + testID)
+		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
 
-	if gridID == "" {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Did not get a gridID associated to" + testID))
+	if len(grids) < 1 {
+		message := fmt.Sprintf("Did not get any grids associated to: " + testID)
+		fmt.Println(message)
+		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
 
-	err = stopTest(gridID, gridRegion, testID, "StopTest")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to stopTest within StopTest: " + err.Error()))
-		return
+	for _, grid := range grids {
+		err = stopTest(grid.ID, grid.Region, testID, "StopTest")
+		if err != nil {
+			message := fmt.Sprintf("Failed to stop test: " + err.Error())
+			fmt.Println(message + " for test id: " + testID)
+			http.Error(w, message, http.StatusInternalServerError)
+			return
+		}
 	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("test stopped"))
 }
 
 func stopTest(gridID string, gridRegion string, testID string, deploymentType string) error {

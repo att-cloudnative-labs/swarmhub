@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    app: deployer
+  name: deployer
+  namespace: swarmhub
+spec:
+  replicas: {{ .Values.replica }}
+  selector:
+    matchLabels:
+      app: deployer
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 50%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: deployer
+    spec:
+      containers:
+      - env:
+        - name: AWS_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_access_key
+              name: cloud-credentials
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_secret_access_key
+              name: cloud-credentials
+        - name: AWS_S3_BUCKET_LOCUSTFILES
+          valueFrom:
+            configMapKeyRef:
+              key: aws_s3_bucket_locustfiles
+              name: deployment-config
+        - name: AWS_S3_BUCKET_TFSTATE
+          valueFrom:
+            configMapKeyRef:
+              key: aws_s3_bucket_tfstate
+              name: deployment-config
+        - name: AWS_S3_REGION
+          valueFrom:
+            configMapKeyRef:
+              key: aws_s3_region
+              name: deployment-config
+        - name: AWS_S3_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_s3_secret_access_key
+              name: cloud-credentials
+        - name: AWS_S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: aws_s3_access_key
+              name: cloud-credentials
+        image: {{ .Values.dockerImage }}
+        {{ if .Values.dockerhub }}
+        imagePullPolicy: Always
+        {{ else }}
+        imagePullPolicy: IfNotPresent
+        {{ end }}
+        name: deployer
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/jwt
+          name: jwt
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: jwt
+        secret:
+          defaultMode: 420
+          items:
+          - key: jwt-key
+            path: jwt
+          secretName: jwt-key

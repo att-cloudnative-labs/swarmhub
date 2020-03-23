@@ -1,7 +1,8 @@
 kubectl --namespace=swarmhub exec -it cockroachdb-0 -- /bin/bash
-./cockroach user set plt --insecure
 
 ./cockroach sql --insecure
+
+CREATE USER plt;
 
 DROP DATABASE portal CASCADE;
 
@@ -117,10 +118,6 @@ CREATE TABLE portal.grid (
    slave_instance_type_id SERIAL REFERENCES portal.region_vm_sizes (id),
    nodes INT NOT NULL
 );
-
-ALTER TABLE portal.test ADD COLUMN grid_id UUID; 
-CREATE INDEX ON portal.test (grid_id);
-ALTER TABLE portal.test ADD CONSTRAINT grid_fk FOREIGN KEY (grid_id) REFERENCES portal.grid (id);
 
 CREATE TABLE portal.grid_template (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

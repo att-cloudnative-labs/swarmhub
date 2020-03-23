@@ -1,9 +1,10 @@
 package api
 
 import (
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/ec2"
-	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
 	"net/http"
+
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/jwt"
+	"github.com/att-cloudnative-labs/swarmhub/services/swarmhub/src/swarmhub/tf"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -23,7 +24,7 @@ func SetRouterPaths(router *httprouter.Router) {
 	router.GET("/api/paginate/grid/info", TokenApiAuth(PaginateGridInfo))
 	router.GET("/api/paginate/test/key/:id", TokenApiAuth(GetTestPaginateKey))
 	router.GET("/api/paginate/grid/key/:id", TokenApiAuth(GetGridPaginateKey))
-	router.GET("/api/test/:id/ip", TokenApiAuth(ec2.GetMasterIP))
+	router.GET("/api/test/:id/ip", TokenApiAuth(tf.GetMasterIP))
 	router.GET("/api/status/test", TokenApiAuth(GetTestStatus))
 	router.GET("/api/status/test/refresh", TokenApiAuth(RefreshTestStatus))
 	router.GET("/api/test/:id/files", TokenApiAuth(TestFiles))

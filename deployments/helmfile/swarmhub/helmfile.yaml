@@ -1,0 +1,14 @@
+
+helmfiles:
+  - path: ./init/helmfile.yaml
+
+releases:
+  - name: swarmhub
+    namespace: swarmhub
+    chart: ./swarmhub/charts
+  - name: ttl-enforcer
+    namespace: swarmhub
+    chart: ./ttl-enforcer/charts
+  - name: deployer
+    namespace: swarmhub
+    chart: ./deployer/charts

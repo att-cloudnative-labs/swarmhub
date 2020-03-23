@@ -44,9 +44,10 @@ resource "kubernetes_config_map" "scripts_cm" {
   }
 
   data = {
-    "locust_prometheus.py" = "from itertools import chain\n\nfrom flask import make_response\nfrom locust import runners, stats, web\n\n\n@web.app.route(\"/metrics\")\ndef prometheus_metrics():\n    is_distributed = isinstance(\n        runners.locust_runner, runners.MasterLocustRunner)\n    if is_distributed:\n        slave_count = runners.locust_runner.slave_count\n    else:\n        slave_count = 0\n\n    if runners.locust_runner.host:\n        host = runners.locust_runner.host\n    elif len(runners.locust_runner.locust_classes) > 0:\n        host = runners.locust_runner.locust_classes[0].host\n    else:\n        host = None\n\n    state = 1\n    if runners.locust_runner.state != \"running\":\n        state = 0\n\n    rows = []\n    for s in stats.sort_stats(runners.locust_runner.request_stats):\n        rows.append(\"locust_request_count{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_request_per_second{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\"}} {}\\n\"\n                    \"locust_failed_requests{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_average_response{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_average_content_length{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_max_response_time{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_running{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", site=\\\"{}\\\"}} {}\\n\"\n                    \"locust_workers{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", site=\\\"{}\\\"}} {}\\n\"\n                    \"locust_users{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", site=\\\"{}\\\"}} {}\\n\".format(\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_name}',\n                        s.name,\n                        s.method,\n                        s.num_requests,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_name}',\n                        s.name,\n                        s.total_rps,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_name}',\n                        s.name,\n                        s.method,\n                        s.num_failures,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_name}',\n                        s.name,\n                        s.method,\n                        s.avg_response_time,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_name}',\n                        s.name,\n                        s.method,\n                        s.avg_content_length,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_name}',\n                        s.name,\n                        s.method,\n                        s.max_response_time,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_name}',\n                        host,\n                        state,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_name}',\n                        host,\n                        slave_count,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_name}',\n                        host,\n                        runners.locust_runner.user_count,\n                    )\n                    )\n\n    response = make_response(\"\".join(rows))\n    response.mimetype = \"text/plain; charset=utf-8'\"\n    response.content_type = \"text/plain; charset=utf-8'\"\n    response.headers[\"Content-Type\"] = \"text/plain; charset=utf-8'\"\n    return response\n"
+    "locust_prometheus.py" = "from itertools import chain\n\nfrom flask import make_response\nfrom locust import runners, stats, web\n\n\n@web.app.route(\"/metrics\")\ndef prometheus_metrics():\n    is_distributed = isinstance(\n        runners.locust_runner, runners.MasterLocustRunner)\n    if is_distributed:\n        slave_count = runners.locust_runner.slave_count\n    else:\n        slave_count = 0\n\n    if runners.locust_runner.host:\n        host = runners.locust_runner.host\n    elif len(runners.locust_runner.locust_classes) > 0:\n        host = runners.locust_runner.locust_classes[0].host\n    else:\n        host = None\n\n    state = 1\n    if runners.locust_runner.state != \"running\":\n        state = 0\n\n    rows = []\n    for s in stats.sort_stats(runners.locust_runner.request_stats):\n        rows.append(\"locust_request_count{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_request_per_second{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\"}} {}\\n\"\n                    \"locust_failed_requests{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_average_response{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_average_content_length{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_max_response_time{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", endpoint=\\\"{}\\\", method=\\\"{}\\\"}} {}\\n\"\n                    \"locust_running{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", site=\\\"{}\\\"}} {}\\n\"\n                    \"locust_workers{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", site=\\\"{}\\\"}} {}\\n\"\n                    \"locust_users{{region=\\\"{}\\\", grid=\\\"{}\\\", test=\\\"{}\\\", site=\\\"{}\\\"}} {}\\n\".format(\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_id}',\n                        s.name,\n                        s.method,\n                        s.num_requests,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_id}',\n                        s.name,\n                        s.total_rps,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_id}',\n                        s.name,\n                        s.method,\n                        s.num_failures,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_id}',\n                        s.name,\n                        s.method,\n                        s.avg_response_time,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_id}',\n                        s.name,\n                        s.method,\n                        s.avg_content_length,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_id}',\n                        s.name,\n                        s.method,\n                        s.max_response_time,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_id}',\n                        host,\n                        state,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_id}',\n                        host,\n                        slave_count,\n                        '${data.terraform_remote_state.cluster.outputs.grid_region}',\n                        '${data.terraform_remote_state.cluster.outputs.grid_id}',\n                        '${var.test_id}',\n                        host,\n                        runners.locust_runner.user_count,\n                    )\n                    )\n\n    response = make_response(\"\".join(rows))\n    response.mimetype = \"text/plain; charset=utf-8'\"\n    response.content_type = \"text/plain; charset=utf-8'\"\n    response.headers[\"Content-Type\"] = \"text/plain; charset=utf-8'\"\n    return response\n"
 
-    "locustfile.py" = "${file("${path.module}/locustfile.py")}"
+    "locustfile.py"    = "${file("${path.module}/locustfile.py")}"
+    "requirements.txt" = "${file("${path.module}/requirements.txt")}"
   }
 }
 
@@ -174,11 +175,11 @@ resource "kubernetes_deployment" "master-deployment" {
             name  = "LOCUST_MODE"
             value = "MASTER"
           }
+
           env {
             name  = "LOCUST_OPTS"
             value = "--print-stats"
           }
-
 
           volume_mount {
             mount_path = local.locust_scripts_path
@@ -677,13 +678,32 @@ resource "null_resource" "swarm" {
   provisioner "remote-exec" {
     inline = [
       <<EOT
-n=0
-until [ $n -ge 300 ]; do
-    curl "http://${kubernetes_service.master-service.spec.0.cluster_ip}:8089/swarm" \
+#!/bin/sh
+n=1
+retry=300
+until [ $n -ge $retry ]; do
+    MASTER_STATUS=$(
+        curl -s -o /dev/null -w "%%{http_code}" "http://${kubernetes_service.master-service.spec.0.cluster_ip}:8089/swarm" \
         -X POST -H "Content-Type: application/x-www-form-urlencoded" \
         -d "locust_count=${var.locust_count}&hatch_rate=${var.hatch_rate}"
-    if [ "$(curl -s "http://${kubernetes_service.master-service.spec.0.cluster_ip}:8089/stats/requests" | python3 -c "import sys, json; print(json.load(sys.stdin)['state'])")" = "running" ]; then
-        exit 0
+        )
+    if [ "$MASTER_STATUS" = "200"  ]; then
+      RES=$(curl -s -w "\n%%{http_code}" "http://${kubernetes_service.master-service.spec.0.cluster_ip}:8089/stats/requests")
+      STATUS=$(echo "$RES" | tail -n 1)
+      if [ "$STATUS" = "200"  ]; then
+        BODY=$(echo "$RES" | sed '$d')
+        STATE=$(echo "$BODY" | python3 -c "import sys, json; print(json.load(sys.stdin)['state'])")
+        if [ "$STATE" = "running" ];then
+          exit 0
+        else
+          echo "Locust not in running state: ($STATE)"
+        fi
+      else
+        echo "Failed to get /stats/requests: Status ($STATUS)"
+      fi
+    else
+        echo "Locust master not ready: Status ($MASTER_STATUS)"
+        echo "Attempt $n out of $retry..."
     fi
     n=$((n + 1))
     sleep 1
