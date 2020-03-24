@@ -272,7 +272,7 @@
               <div class="content">
                 <h5>Currently Deploying: {{logStatus}}</h5>
               </div>
-              <p v-for="log in logs" :key="log.ID">{{ logPrint(log) }}</p>
+              <p v-for="(log, index) in logs" :key="index">{{ logPrint(log) }}</p>
             </section>
             <footer class="modal-card-foot">
               <button class="button" @click="showLogs(false);">Close</button>
@@ -459,9 +459,11 @@
 
 <script>
 import axios from "axios";
+import { printLogMixin } from '../mixins/printLogMixin'
 
 export default {
   name: "TestDetails",
+  mixins: [printLogMixin],
   props: {
     testID: String,
     currentTestStatus: String
@@ -737,16 +739,6 @@ export default {
         this.stopGettingLogs();
         this.isShowLogsModalActive = false;
       }
-    },
-    logPrint: function(log) {
-      var logprint = "";
-      if (log.Output != "") {
-        logprint =
-          this.$moment(log.Timestamp).format("MMM D, YYYY h:mm:ssA") +
-          ": " +
-          log.Output;
-      }
-      return logprint;
     },
     getLog: function(id) {
       if (
