@@ -55,7 +55,7 @@ func deployerLogs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	}, stan.DeliverAllAvailable())
 
 	if err != nil {
-		dl := DeploymentLog{Output: fmt.Sprintf("Error subscribing to nats: %v", err.Error()), StreamType: "stderr"}
+		dl := DeploymentLog{Output: fmt.Sprintf("Error subscribing to nats: %v", err.Error()), StreamType: "stderr", Timestamp: time.Now().UnixNano() / int64(time.Millisecond)}
 		logsList = append(logsList, dl)
 		jsonResponse, err := json.Marshal(logsList)
 		if err != nil {
@@ -67,6 +67,8 @@ func deployerLogs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	}
 
 	previouslyDelivered := int64(0)
+
+	time.Sleep(500 * time.Millisecond)	// Delay to allow stan message callback return 
 
 	var currentTime int64
 	for {
@@ -80,7 +82,7 @@ func deployerLogs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 		}
 
 		if delivered == 0 && pending == 0 {
-			dl := DeploymentLog{Output: "No log message.", StreamType: "stdin"}
+			dl := DeploymentLog{Output: "No log message.", StreamType: "stdin", Timestamp: currentTime / int64(time.Millisecond)}
 			logsList = append(logsList, dl)
 			jsonResponse, err := json.Marshal(logsList)
 			if err != nil {
@@ -93,7 +95,7 @@ func deployerLogs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 		}
 
 		if (pending == 0 && delivered == previouslyDelivered) || logTime > currentTime {
-			fmt.Printf("Delivered: %v, Previously Deliverred: %v, Current Time: %v, Log Time: %v\n", delivered, previouslyDelivered, currentTime, logTime)
+			fmt.Printf("Delivered: %v, Previously Delivered: %v, Current Time: %v, Log Time: %v\n", delivered, previouslyDelivered, currentTime, logTime)
 			break
 		}
 		previouslyDelivered = delivered
