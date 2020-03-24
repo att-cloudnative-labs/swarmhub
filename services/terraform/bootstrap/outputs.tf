@@ -22,6 +22,7 @@ output "nodes" {
     ssh_username     = data.terraform_remote_state.provision.outputs.ssh_username
     private_key      = data.terraform_remote_state.provision.outputs.private_key
   }
+  sensitive = true
 }
 
 output "kubeconfig" {
