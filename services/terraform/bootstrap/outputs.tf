@@ -13,6 +13,7 @@ output "cluster" {
     ca_crt       = rke_cluster.cluster.ca_crt
     certificates = rke_cluster.cluster.certificates
   }
+  sensitive = true
 }
 
 output "nodes" {
@@ -24,7 +25,8 @@ output "nodes" {
 }
 
 output "kubeconfig" {
-  value = rke_cluster.cluster.kube_config_yaml
+  value     = rke_cluster.cluster.kube_config_yaml
+  sensitive = true
 }
 
 output "provider" {

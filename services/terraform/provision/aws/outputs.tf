@@ -1,5 +1,6 @@
 output "private_key" {
-  value = tls_private_key.node-key.private_key_pem
+  value     = tls_private_key.node-key.private_key_pem
+  sensitive = true
 }
 
 output "ssh_username" {
