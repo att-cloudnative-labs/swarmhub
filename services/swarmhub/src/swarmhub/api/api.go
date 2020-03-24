@@ -55,7 +55,14 @@ func deployerLogs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	}, stan.DeliverAllAvailable())
 
 	if err != nil {
-		w.Write([]byte("Error subscribing to nats."))
+		dl := DeploymentLog{Output: fmt.Sprintf("Error subscribing to nats: %v", err.Error()), StreamType: "stderr"}
+		logsList = append(logsList, dl)
+		jsonResponse, err := json.Marshal(logsList)
+		if err != nil {
+			fmt.Println("Error converting logs to json: ", err.Error())
+			return
+		}
+		w.Write([]byte(jsonResponse))
 		return
 	}
 
@@ -73,8 +80,15 @@ func deployerLogs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 		}
 
 		if delivered == 0 && pending == 0 {
-			w.Write([]byte("No log messages."))
+			dl := DeploymentLog{Output: "No log message.", StreamType: "stdin"}
+			logsList = append(logsList, dl)
+			jsonResponse, err := json.Marshal(logsList)
+			if err != nil {
+				fmt.Println("Error converting logs to json: ", err.Error())
+				return
+			}
 			sub.Unsubscribe()
+			w.Write([]byte(jsonResponse))
 			return
 		}
 
