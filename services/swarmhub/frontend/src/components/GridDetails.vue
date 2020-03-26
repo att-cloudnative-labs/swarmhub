@@ -5,7 +5,7 @@
       <p class="subtitle is-6">
         <button
           class="button is-small is-rounded is-danger"
-          :disabled="grid.Status === 'Deploying'"
+          :disabled="grid.Status === 'Deploying' || grid.Status === 'Cleaning' "
           @click="isDeleteGridModalActive = true;"
         >delete</button>
       </p>
