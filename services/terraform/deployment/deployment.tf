@@ -682,41 +682,14 @@ resource "null_resource" "swarm" {
   }
 
   depends_on = [kubernetes_deployment.slave-deployment, kubernetes_deployment.master-deployment]
+  provisioner "file" {
+    content = templatefile("${path.module}/swarm.tmpl", { locust_count = var.locust_count,hatch_rate   = var.hatch_rate,locust_master_ip = kubernetes_service.master-service.spec.0.cluster_ip })
+    destination = "/tmp/swarm.sh"
+  }
   provisioner "remote-exec" {
     inline = [
-      <<EOT
-#!/bin/sh
-n=1
-retry=300
-until [ $n -ge $retry ]; do
-    MASTER_STATUS=$(
-        curl -s -o /dev/null -w "%%{http_code}" "http://${kubernetes_service.master-service.spec.0.cluster_ip}:8089/swarm" \
-        -X POST -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "locust_count=${var.locust_count}&hatch_rate=${var.hatch_rate}"
-        )
-    if [ "$MASTER_STATUS" = "200"  ]; then
-      RES=$(curl -s -w "\n%%{http_code}" "http://${kubernetes_service.master-service.spec.0.cluster_ip}:8089/stats/requests")
-      STATUS=$(echo "$RES" | tail -n 1)
-      if [ "$STATUS" = "200"  ]; then
-        BODY=$(echo "$RES" | sed '$d')
-        STATE=$(echo "$BODY" | python3 -c "import sys, json; print(json.load(sys.stdin)['state'])")
-        if [ "$STATE" = "running" ];then
-          exit 0
-        else
-          echo "Locust not in running state: ($STATE)"
-        fi
-      else
-        echo "Failed to get /stats/requests: Status ($STATUS)"
-      fi
-    else
-        echo "Locust master not ready: Status ($MASTER_STATUS)"
-        echo "Attempt $n out of $retry..."
-    fi
-    n=$((n + 1))
-    sleep 1
-done
-exit 1
-      EOT
+      "chmod +x /tmp/swarm.sh",
+      "/tmp/swarm.sh",
     ]
   }
 }
