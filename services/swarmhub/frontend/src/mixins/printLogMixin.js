@@ -1,5 +1,4 @@
 import moment from 'moment';
-import stripAnsi from 'strip-ansi'
 
 export const printLogMixin = {
   methods: {
@@ -9,7 +8,7 @@ export const printLogMixin = {
         logprint =
           moment(log.Timestamp).format("MMM D, YYYY h:mm:ssA") +
           ": " +
-          stripAnsi(log.Output);
+          log.Output;
       }
       return logprint;
     },
