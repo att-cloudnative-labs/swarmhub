@@ -140,9 +140,22 @@ func updateDeployerStatus(m *stan.Msg) {
 	}
 
 	if deployedStatus.DeploymentType == "Test" {
-		db.UpdateTestStatus(deployedStatus.ID, deployedStatus.Status)
-		if deployedStatus.Status == "Error" {
-			db.UpdateGridStatus(deployedStatus.Params["GRID_ID"], "Available")
+		status, err := db.GetGridStatus(deployedStatus.Params["GRID_ID"])
+		if err != nil {
+			fmt.Println("failed DeploymentType")
+			return
+		}
+		if status != "Expired" && status != "Deleting" {
+			if err = db.UpdateTestStatus(deployedStatus.ID, deployedStatus.Status); err != nil {
+				fmt.Println("failed UpdateTestStatus")
+				return
+			}
+			if deployedStatus.Status == "Error" {
+				if err = db.UpdateGridStatus(deployedStatus.Params["GRID_ID"], "Available"); err != nil {
+					fmt.Println("failed UpdateGridStatus")
+					return
+				}
+			}
 		}
 	} else if deployedStatus.DeploymentType == "Grid" || deployedStatus.DeploymentType == "DeleteGrid" {
 		db.UpdateGridStatus(deployedStatus.ID, deployedStatus.Status)
