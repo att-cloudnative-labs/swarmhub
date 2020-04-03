@@ -21,8 +21,12 @@ resource "rke_cluster" "cluster" {
     address = data.terraform_remote_state.provision.outputs.kube_master_ip
     user    = data.terraform_remote_state.provision.outputs.ssh_username
     ssh_key = data.terraform_remote_state.provision.outputs.private_key
-    role    = ["controlplane", "etcd"]
+    role    = ["controlplane", "etcd", "worker"]
+    labels = {
+      app = "k8s-master"
+    }
   }
+  
   nodes {
     address = data.terraform_remote_state.provision.outputs.locust_master_ip
     user    = data.terraform_remote_state.provision.outputs.ssh_username
@@ -32,6 +36,7 @@ resource "rke_cluster" "cluster" {
       app = "locust-master"
     }
   }
+
   dynamic nodes {
     for_each = data.terraform_remote_state.provision.outputs.locust_slave_ips[*]
     content {
@@ -44,8 +49,34 @@ resource "rke_cluster" "cluster" {
       }
     }
   }
+
+  # Monitoring node_selector is not supported in terraform-provider-rke v0.14.1. Will upgrade to the latest v1 version once it is stable released.
+  monitoring {
+    provider = "metrics-server"
+  }
+
+  # Limitation: coredns-autoscaler pod can't be nodeselect
+    node_selector = {
+      app = "k8s-master"
+    }
+    provider = "coredns"
+  }
+
+  # Limitation: default-http-backend pod can't be nodeselect
+  ingress {
+    node_selector = {
+      app = "locust-master"
+    }
+    provider = "nginx"
+  }
+
   services_kubelet {
-    extra_binds = ["/etc/config:/etc/config:rshared", "/tmp/pv_server:/tmp/pv_server:rshared", "/tmp/data:/tmp/data:rshared", "/data:/data:rshared", "/var/run/secrets/kubernetes.io/serviceaccount:/var/run/secrets/kubernetes.io/serviceaccount:rshared"]
+    extra_binds = [
+      "/etc/config:/etc/config:rshared",
+      "/tmp/pv_server:/tmp/pv_server:rshared",
+      "/tmp/data:/tmp/data:rshared", "/data:/data:rshared",
+      "/var/run/secrets/kubernetes.io/serviceaccount:/var/run/secrets/kubernetes.io/serviceaccount:rshared"
+    ]
   }
 }
 
