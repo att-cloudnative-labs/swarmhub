@@ -56,6 +56,7 @@ resource "rke_cluster" "cluster" {
   }
 
   # Limitation: coredns-autoscaler pod can't be nodeselect
+  dns {
     node_selector = {
       app = "k8s-master"
     }
