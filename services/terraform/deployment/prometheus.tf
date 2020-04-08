@@ -188,13 +188,11 @@ resource "kubernetes_service" "prometheus-svc" {
       port        = "80"
       protocol    = "TCP"
       target_port = "9090"
-      node_port   = "30001"
     }
     selector = {
       app = "prometheus"
     }
     session_affinity = "None"
-    type             = "NodePort"
   }
 }
 
@@ -263,7 +261,16 @@ resource "kubernetes_deployment" "prometheus-deploy" {
         container {
           name  = "prometheus-server"
           image = "prom/prometheus:v2.13.1"
-          args  = ["--storage.tsdb.retention.time=15d", "--config.file=/etc/config/prometheus.yml", "--storage.tsdb.path=/data", "--web.console.libraries=/etc/prometheus/console_libraries", "--web.console.templates=/etc/prometheus/consoles", "--web.enable-lifecycle"]
+          args  = [
+            "--storage.tsdb.retention.time=15d",
+            "--config.file=/etc/config/prometheus.yml",
+            "--storage.tsdb.path=/data",
+            "--web.console.libraries=/etc/prometheus/console_libraries",
+            "--web.console.templates=/etc/prometheus/consoles",
+            "--web.enable-lifecycle",
+            "--web.external-url=http://localhost:9090/prometheus/",
+            "--web.route-prefix=/"
+          ]
 
           port {
             container_port = 9090

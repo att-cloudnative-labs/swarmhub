@@ -68,7 +68,8 @@ resource "kubernetes_ingress" "ingress" {
   metadata {
     name = "locust"
     annotations = {
-      "ingress.kubernetes.io/rewrite-target"    = "/"
+      "nginx.ingress.kubernetes.io/rewrite-target" = "/"
+      "nginx.ingress.kubernetes.io/add-base-url" = "true"
     }
   }
 
@@ -79,6 +80,13 @@ resource "kubernetes_ingress" "ingress" {
           backend {
             service_name = "locust-master-svc"
             service_port = 8001
+          }
+        }
+        path {
+          path = "/prometheus"
+          backend {
+            service_name = "prometheus-server"
+            service_port = 80
           }
         }
       }
