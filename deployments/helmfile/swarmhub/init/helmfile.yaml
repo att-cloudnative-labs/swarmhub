@@ -18,7 +18,7 @@ releases:
         name: jwt-key
       type: Opaque
       data:
-        jwt-key: {{ readFile "./files/jwt-key" }}
+        jwt-key: {{ readFile "./files/jwt-key" | b64enc }}
     - apiVersion: v1
       kind: Secret
       metadata:

@@ -5,6 +5,7 @@ terraform {
     aws        = "~> 2.48"
     kubernetes = "~> 1.10"
     null       = "~> 2.1"
+    tls        = "~> 2.1"
   }
 }
 
@@ -13,8 +14,8 @@ provider "aws" {
 }
 
 locals {
-  #locust_image        = "grubykarol/locust:0.12.0-python3.7-alpine3.10"
   locust_image        = "noclih/locust:0.0.1"
+  locust_proxy_image  = "jenglamlow/locust-proxy:0.1"
   locust_scripts_path = "/locust"
 }
 
@@ -54,12 +55,12 @@ resource "kubernetes_config_map" "scripts_cm" {
   }
 }
 
-resource "kubernetes_config_map" "locust-cm" {
+resource "kubernetes_secret" "proxy-secret" {
   metadata {
-    name = "locust-cm"
+    name = "proxy-secret"
   }
   data = {
-    ATTACKED_HOST = "http://locust-master:8089"
+    "jwt" = file("/etc/jwt/jwt")
   }
 }
 
@@ -67,23 +68,17 @@ resource "kubernetes_ingress" "ingress" {
   metadata {
     name = "locust"
     annotations = {
-      "ingress.kubernetes.io/rewrite-target" = "/"
-      "ingress.kubernetes.io/ssl-redirect"   = "false"
+      "ingress.kubernetes.io/rewrite-target"    = "/"
     }
   }
 
   spec {
-    backend {
-      service_name = "locust-master-svc"
-      service_port = 80
-    }
-
     rule {
       http {
         path {
           backend {
             service_name = "locust-master-svc"
-            service_port = 8089
+            service_port = 8001
           }
         }
       }
@@ -117,6 +112,10 @@ resource "kubernetes_service" "master-service" {
     port {
       name = "web-ui"
       port = 8089
+    }
+    port {
+      name = "proxy"
+      port = 8001
     }
   }
 }
@@ -160,20 +159,13 @@ resource "kubernetes_deployment" "master-deployment" {
         node_selector = {
           app = "locust-master"
         }
+
+        # Locust Master
         container {
           image             = local.locust_image
           name              = "locust-master"
           image_pull_policy = "IfNotPresent"
 
-          #env {
-          #  name = "ATTACKED_HOST"
-          #  value_from {
-          #    config_map_key_ref {
-          #      name = "locust-cm"
-          #      key  = "ATTACKED_HOST"
-          #    }
-          #  }
-          #}
           env {
             name  = "LOCUST_MODE"
             value = "MASTER"
@@ -201,34 +193,49 @@ resource "kubernetes_deployment" "master-deployment" {
             name           = "web-ui"
             container_port = 8089
           }
-
-
-
-
-          resources {}
-          termination_message_path = "/dev/termination-log"
         }
+
+        # Locust Proxy
+        container {
+          name              = "locust-proxy"
+          image             = local.locust_proxy_image
+          image_pull_policy = "Always"
+
+          volume_mount {
+            mount_path = "/jwt"
+            sub_path   = "jwt"
+            name       = "jwt"
+          }
+
+          port {
+            name           = "web-ui-proxy"
+            container_port = 8001
+          }
+        }
+
         toleration {
           effect   = "NoSchedule"
           operator = "Exists"
         }
 
-        dns_policy     = "ClusterFirst"
-        restart_policy = "Always"
-
-        security_context {}
-
         termination_grace_period_seconds = 30
+
+        # Volumes
         volume {
           name = "locust-scripts"
           config_map {
             name = "scripts-cm"
           }
         }
+        volume {
+          name = "jwt"
+          secret {
+            secret_name = "proxy-secret"
+          }
+        }
       }
     }
   }
-
 }
 
 resource "kubernetes_deployment" "slave-deployment" {
@@ -251,13 +258,6 @@ resource "kubernetes_deployment" "slave-deployment" {
       }
     }
 
-    /*strategy {
-      rolling_update {
-        max_surge       = 2
-        max_unavailable = 0
-      }
-    }*/
-
     template {
       metadata {
         labels = {
@@ -278,15 +278,6 @@ resource "kubernetes_deployment" "slave-deployment" {
           name              = "locust-slave"
           image_pull_policy = "IfNotPresent"
 
-          #env {
-          #  name = "ATTACKED_HOST"
-          #  value_from {
-          #    config_map_key_ref {
-          #      name = "locust-cm"
-          #      key  = "ATTACKED_HOST"
-          #    }
-          #  }
-          #}
           env {
             name  = "LOCUST_MODE"
             value = "SLAVE"
@@ -314,18 +305,12 @@ resource "kubernetes_deployment" "slave-deployment" {
             mount_path = local.locust_scripts_path
             name       = "locust-scripts"
           }
-
-          resources {}
-          termination_message_path = "/dev/termination-log"
         }
         toleration {
           effect   = "NoSchedule"
           operator = "Exists"
         }
 
-        dns_policy     = "ClusterFirst"
-        restart_policy = "Always"
-        security_context {}
         termination_grace_period_seconds = 30
         volume {
           name = "locust-scripts"
@@ -354,7 +339,11 @@ resource "null_resource" "swarm" {
 
   depends_on = [kubernetes_deployment.slave-deployment, kubernetes_deployment.master-deployment]
   provisioner "file" {
-    content = templatefile("${path.module}/swarm.tmpl", { locust_count = var.locust_count,hatch_rate   = var.hatch_rate,locust_master_ip = kubernetes_service.master-service.spec.0.cluster_ip })
+    content = templatefile("${path.module}/swarm.tmpl", {
+      locust_count = var.locust_count,
+      hatch_rate   = var.hatch_rate,
+      locust_master_ip = kubernetes_service.master-service.spec.0.cluster_ip
+    })
     destination = "/tmp/swarm.sh"
   }
   provisioner "remote-exec" {

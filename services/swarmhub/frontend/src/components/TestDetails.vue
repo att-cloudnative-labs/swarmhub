@@ -50,8 +50,8 @@
         <div class="block">
           <form
             v-if="testIP.Status=='Success'"
-            method="get"
-            v-bind:action="'https://' + selectedLocustGrid.IP  /*+ '/login'*/"
+            method="post"
+            v-bind:action="'https://' + selectedLocustGrid.IP  + '/login'"
             target="_blank"
           >
             <div class="control">

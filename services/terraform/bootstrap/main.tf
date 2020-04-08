@@ -21,7 +21,7 @@ resource "rke_cluster" "cluster" {
     address = data.terraform_remote_state.provision.outputs.kube_master_ip
     user    = data.terraform_remote_state.provision.outputs.ssh_username
     ssh_key = data.terraform_remote_state.provision.outputs.private_key
-    role    = ["controlplane", "etcd", "worker"]
+    role    = ["controlplane", "etcd"]
     labels = {
       app = "k8s-master"
     }
@@ -58,17 +58,22 @@ resource "rke_cluster" "cluster" {
   # Limitation: coredns-autoscaler pod can't be nodeselect
   dns {
     node_selector = {
-      app = "k8s-master"
+      app = "locust-master"
     }
     provider = "coredns"
   }
 
+  addons = templatefile("${path.module}/tls-secret.yaml.tmpl", {
+      key  = filebase64("${path.module}/server.key") ,
+      crt  = filebase64("${path.module}/server.crt") ,
+    })
+
   # Limitation: default-http-backend pod can't be nodeselect
   ingress {
-    node_selector = {
-      app = "locust-master"
-    }
     provider = "nginx"
+    extra_args = {
+       default-ssl-certificate = "ingress-nginx/ingress-default-cert"
+    }
   }
 
   services_kubelet {
