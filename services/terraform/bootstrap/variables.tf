@@ -12,3 +12,15 @@ variable "tfstate_provision" {
   type        = string
   description = "Key name of state file"
 }
+
+variable "TLS_KEY_PATH" {
+  type        = string
+  description = "tls key path"
+  default     = "/etc/tls/server.key"
+}
+
+variable "TLS_CRT_PATH" {
+  type        = string
+  description = "tls cert path"
+  default     = "/etc/tls/server.crt"
+}

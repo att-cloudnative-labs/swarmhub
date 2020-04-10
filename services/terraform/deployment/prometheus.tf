@@ -4,6 +4,7 @@ resource "kubernetes_service_account" "prometheus-sa" {
       app = "prometheus"
     }
     name = "prometheus-server"
+    namespace = kubernetes_namespace.grid.metadata[0].name
   }
 }
 
@@ -20,7 +21,7 @@ data "kubernetes_secret" "prometheus-secret" {
 resource "kubernetes_config_map" "prometheus_server" {
   metadata {
     name = "prometheus-server"
-
+    namespace = kubernetes_namespace.grid.metadata[0].name
     labels = {
       app = "prometheus"
     }
@@ -38,7 +39,7 @@ resource "kubernetes_config_map" "prometheus_server" {
 resource "kubernetes_config_map" "prometheus_server_token" {
   metadata {
     name = "prometheus-server-token"
-
+    namespace = kubernetes_namespace.grid.metadata[0].name
     labels = {
       app = "prometheus"
     }
@@ -67,7 +68,7 @@ resource "kubernetes_config_map" "prometheus_server_token" {
 
 resource "kubernetes_storage_class" "prometheus-sc" {
   metadata {
-    name = "local-storage"
+    name = local.storage_name
   }
   storage_provisioner = "kubernetes.io/no-provisioner"
 
@@ -75,7 +76,7 @@ resource "kubernetes_storage_class" "prometheus-sc" {
 
 resource "kubernetes_persistent_volume" "pv_server" {
   metadata {
-    name = "pv-server"
+    name = local.pv_server_name
     labels = {
       type = "local"
     }
@@ -92,7 +93,7 @@ resource "kubernetes_persistent_volume" "pv_server" {
 
     access_modes                     = ["ReadWriteOnce"]
     persistent_volume_reclaim_policy = "Retain"
-    storage_class_name               = "local-storage"
+    storage_class_name               = local.storage_name
 
     persistent_volume_source {
       local {
@@ -119,17 +120,18 @@ resource "kubernetes_persistent_volume_claim" "prometheus-pvc" {
     labels = {
       app = "prometheus"
     }
-    name = "prometheus-server"
+    name = local.prometheus_pvc_name
+    namespace = kubernetes_namespace.grid.metadata[0].name
   }
   spec {
     access_modes       = ["ReadWriteOnce"]
-    storage_class_name = "local-storage"
+    storage_class_name = local.storage_name
     resources {
       requests = {
         storage = "2Gi"
       }
     }
-    volume_name = "pv-server"
+    volume_name = local.pv_server_name
   }
 }
 
@@ -138,7 +140,7 @@ resource "kubernetes_cluster_role" "prometheus-cr" {
     labels = {
       app = "prometheus"
     }
-    name = "prometheus-server"
+    name = local.cluster_role_name
   }
 
   rule {
@@ -167,11 +169,12 @@ resource "kubernetes_cluster_role_binding" "prometheus-crb" {
   subject {
     kind = "ServiceAccount"
     name = "prometheus-server"
+    namespace = kubernetes_namespace.grid.metadata[0].name
   }
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "ClusterRole"
-    name      = "prometheus-server"
+    name      = local.cluster_role_name
   }
 }
 
@@ -181,6 +184,7 @@ resource "kubernetes_service" "prometheus-svc" {
       app = "prometheus"
     }
     name = "prometheus-server"
+    namespace = kubernetes_namespace.grid.metadata[0].name
   }
   spec {
     port {
@@ -199,6 +203,7 @@ resource "kubernetes_service" "prometheus-svc" {
 resource "kubernetes_deployment" "prometheus-deploy" {
   metadata {
     name = "prometheus-server"
+    namespace = kubernetes_namespace.grid.metadata[0].name
     labels = {
       app = "prometheus"
     }
@@ -240,7 +245,7 @@ resource "kubernetes_deployment" "prometheus-deploy" {
         volume {
           name = "storage-volume"
           persistent_volume_claim {
-            claim_name = "prometheus-server"
+            claim_name = local.prometheus_pvc_name
           }
         }
 

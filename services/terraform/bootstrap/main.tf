@@ -64,8 +64,8 @@ resource "rke_cluster" "cluster" {
   }
 
   addons = templatefile("${path.module}/tls-secret.yaml.tmpl", {
-      key  = filebase64("${path.module}/server.key") ,
-      crt  = filebase64("${path.module}/server.crt") ,
+      key  = filebase64(var.TLS_KEY_PATH) ,
+      crt  = filebase64(var.TLS_CRT_PATH) ,
     })
 
   # Limitation: default-http-backend pod can't be nodeselect

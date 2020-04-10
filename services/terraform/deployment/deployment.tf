@@ -17,6 +17,10 @@ locals {
   locust_image        = "noclih/locust:0.0.1"
   locust_proxy_image  = "jenglamlow/locust-proxy:0.1"
   locust_scripts_path = "/locust"
+  storage_name = "local-storage-${var.test_id}"
+  pv_server_name = "pv-server-${var.test_id}"
+  cluster_role_name = "cluster-role-${var.test_id}"
+  prometheus_pvc_name = "prometheus-pvc-${var.test_id}"
 }
 
 data "terraform_remote_state" "cluster" {
@@ -39,9 +43,16 @@ provider "kubernetes" {
   cluster_ca_certificate = data.terraform_remote_state.cluster.outputs.cluster.ca_crt
 }
 
+resource "kubernetes_namespace" "grid" {
+  metadata {
+    name =  var.test_id
+  }
+}
+
 resource "kubernetes_config_map" "scripts_cm" {
   metadata {
     name = "scripts-cm"
+    namespace = kubernetes_namespace.grid.metadata[0].name
   }
 
   data = {
@@ -58,6 +69,7 @@ resource "kubernetes_config_map" "scripts_cm" {
 resource "kubernetes_secret" "proxy-secret" {
   metadata {
     name = "proxy-secret"
+    namespace = kubernetes_namespace.grid.metadata[0].name
   }
   data = {
     "jwt" = file("/etc/jwt/jwt")
@@ -71,6 +83,7 @@ resource "kubernetes_ingress" "ingress" {
       "nginx.ingress.kubernetes.io/rewrite-target" = "/"
       "nginx.ingress.kubernetes.io/add-base-url" = "true"
     }
+    namespace = kubernetes_namespace.grid.metadata[0].name
   }
 
   spec {
@@ -97,6 +110,7 @@ resource "kubernetes_ingress" "ingress" {
 resource "kubernetes_service" "master-service" {
   metadata {
     name = "locust-master-svc"
+    namespace = kubernetes_namespace.grid.metadata[0].name
     labels = {
       role = "locust-master"
     }
@@ -134,6 +148,7 @@ resource "kubernetes_deployment" "master-deployment" {
     labels = {
       role = "locust-master"
     }
+    namespace = kubernetes_namespace.grid.metadata[0].name
   }
 
   spec {
@@ -207,7 +222,7 @@ resource "kubernetes_deployment" "master-deployment" {
         container {
           name              = "locust-proxy"
           image             = local.locust_proxy_image
-          image_pull_policy = "Always"
+          image_pull_policy = "IfNotPresent"
 
           volume_mount {
             mount_path = "/jwt"
@@ -249,6 +264,7 @@ resource "kubernetes_deployment" "master-deployment" {
 resource "kubernetes_deployment" "slave-deployment" {
   metadata {
     name = "locust-slave"
+    namespace = kubernetes_namespace.grid.metadata[0].name
     labels = {
       role = "locust-slave"
     }
