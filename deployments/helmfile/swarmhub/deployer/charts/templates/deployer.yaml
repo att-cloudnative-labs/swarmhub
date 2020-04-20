@@ -59,6 +59,10 @@ spec:
             secretKeyRef:
               key: aws_s3_access_key
               name: cloud-credentials
+        - name: TF_VAR_TLS_KEY_PATH
+          value: /etc/tls/server.key
+        - name: TF_VAR_TLS_CRT_PATH
+          value: /etc/tls/server.crt
         image: {{ .Values.dockerImage }}
         {{ if .Values.dockerhub }}
         imagePullPolicy: Always
@@ -73,6 +77,9 @@ spec:
         - mountPath: /etc/jwt
           name: jwt
           readOnly: true
+        - mountPath: /etc/tls
+          name: tls-volume
+          readOnly: true
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -86,3 +93,12 @@ spec:
           - key: jwt-key
             path: jwt
           secretName: jwt-key
+      - name: tls-volume
+        secret:
+          defaultMode: 420
+          secretName: tls
+          items:
+          - key: server.crt
+            path: server.crt
+          - key: server.key
+            path: server.key

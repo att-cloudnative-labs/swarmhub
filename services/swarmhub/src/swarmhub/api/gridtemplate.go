@@ -46,11 +46,6 @@ func GetAllGridTemplates(w http.ResponseWriter, r *http.Request, ps httprouter.P
 		return
 	}
 
-	if len(gridTemplates) == 0 {
-		http.Error(w, "No content", http.StatusNoContent)
-		return
-	}
-
 	jsonData, err := json.Marshal(gridTemplates)
 	if err != nil {
 		message := fmt.Sprintf("error parsing grid templates result: " + err.Error())
@@ -60,7 +55,11 @@ func GetAllGridTemplates(w http.ResponseWriter, r *http.Request, ps httprouter.P
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsonData)
+	if len(gridTemplates) == 0 {
+		w.Write([]byte("[]"))
+	} else {
+		w.Write(jsonData)
+	}
 }
 
 func GetGridTemplateById(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

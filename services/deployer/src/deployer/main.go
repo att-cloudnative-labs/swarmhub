@@ -319,31 +319,31 @@ func updateInitialDeploymentStatus(id string, deploymentType string, parameters 
 	var statusUpdates []DeploymentStatus
 	switch deploymentType {
 	case "Grid", "Test":
-		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deploying"}
+		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deploying", Params: parameters}
 		statusUpdates = append(statusUpdates, status)
 	case "DeleteGrid":
-		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deleting"}
+		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deleting", Params: parameters}
 		statusUpdates = append(statusUpdates, status)
 	case "CancelGrid":
 		if val, ok := parameters[gridID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Stopping"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Stopping", Params: parameters})
 		}
 	case "StopTest":
 		if val, ok := parameters[gridID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Cleaning"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Cleaning", Params: parameters})
 		}
 		if val, ok := parameters[testID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopping"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopping", Params: parameters})
 		}
 	case "CancelTest":
 		if val, ok := parameters[gridID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Cleaning"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Cleaning", Params: parameters})
 		}
 		if val, ok := parameters[testID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopping"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopping", Params: parameters})
 		}
 	case "GridCleanup":
-		status := DeploymentStatus{ID: id, DeploymentType: "Grid", Status: "Cleaning"}
+		status := DeploymentStatus{ID: id, DeploymentType: "Grid", Status: "Cleaning", Params: parameters}
 		statusUpdates = append(statusUpdates, status)
 	}
 
@@ -361,34 +361,34 @@ func updateFinalDeploymentStatus(id string, deploymentType string, parameters ma
 	var statusUpdates []DeploymentStatus
 	switch deploymentType {
 	case "Grid":
-		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Available"}
+		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Available", Params: parameters}
 		statusUpdates = append(statusUpdates, status)
 	case "DeleteGrid":
-		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deleted"}
+		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deleted", Params: parameters}
 		statusUpdates = append(statusUpdates, status)
 	case "CancelGrid":
 		if val, ok := parameters[gridID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Available"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Available", Params: parameters})
 		}
 	case "Test":
-		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deployed"}
+		status := DeploymentStatus{ID: id, DeploymentType: deploymentType, Status: "Deployed", Params: parameters}
 		statusUpdates = append(statusUpdates, status)
 	case "StopTest":
 		if val, ok := parameters[gridID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Available"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Available", Params: parameters})
 		}
 		if val, ok := parameters[testID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopped"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopped", Params: parameters})
 		}
 	case "CancelTest":
 		if val, ok := parameters[gridID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Available"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Grid", Status: "Available", Params: parameters})
 		}
 		if val, ok := parameters[testID]; ok && val != "" {
-			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopped"})
+			statusUpdates = append(statusUpdates, DeploymentStatus{ID: fmt.Sprintf("%v", val), DeploymentType: "Test", Status: "Stopped", Params: parameters})
 		}
 	case "GridCleanup":
-		status := DeploymentStatus{ID: id, DeploymentType: "Grid", Status: "Available"}
+		status := DeploymentStatus{ID: id, DeploymentType: "Grid", Status: "Available", Params: parameters}
 		statusUpdates = append(statusUpdates, status)
 	}
 

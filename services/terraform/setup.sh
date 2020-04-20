@@ -32,7 +32,7 @@ function isset() {
 }
 
 function destroy_grid() {
-    terraform destroy -auto-approve \
+    terraform destroy -no-color -auto-approve \
         -var="grid_id=$GRID_ID" \
         -var="grid_region=$GRID_REGION"
     if [ $? -ne 0 ]; then
@@ -44,7 +44,7 @@ function destroy_grid() {
 }
 
 function destroy_deployment() {
-    terraform destroy -auto-approve \
+    terraform destroy -no-color -auto-approve \
         -var="bucket_region=$AWS_S3_REGION" \
         -var="bucket_tfstate=$AWS_S3_BUCKET_TFSTATE" \
         -var="tfstate_bootstrap=$KEY_BASE-BOOTSTRAP"
@@ -80,8 +80,8 @@ function undo() {
     if [[ "$ARGS" = "provision_args" ]]; then
         cd $WORKSPACE_DIR/$KEY_BASE/provision/$PROVIDER
     fi
-    $1 "terraform plan -destroy -out=tfplan -input=false"
-    terraform apply -input=false tfplan
+    $1 "terraform plan -destroy -no-color -out=tfplan -input=false"
+    terraform apply -no-color -input=false tfplan
     if [ $? -ne 0 ]; then
         exitf 'failed to undo action'
     fi
@@ -129,7 +129,7 @@ elif [[ "$DEPLOYMENT" = "true" || "$DESTROY_DEPLOYMENT" = "true" ]]; then
 fi
 
 # initialize terraform backend
-terraform init -input=false \
+terraform init -no-color -input=false \
     -backend-config="bucket=$AWS_S3_BUCKET_TFSTATE" \
     -backend-config="key=$KEY" \
     -backend-config="region=$AWS_S3_REGION"
@@ -151,7 +151,7 @@ elif [ "$PROVISION" = "true" ]; then
 
     ARGS="provision_args"
     if [ "$PROVIDER" = "aws" ]; then
-        provision_args "terraform apply -auto-approve"
+        provision_args "terraform apply -no-color -auto-approve"
 
     elif [ "$PROVIDER" = "prem" ]; then
         exitf 'not implemented'
@@ -163,7 +163,7 @@ elif [ "$PROVISION" = "true" ]; then
 
     # bootstrap kubernetes cluster based on provisioned nodes
     cd $WORKSPACE_DIR/$KEY_BASE/bootstrap
-    terraform init \
+    terraform init -no-color \
         -backend-config="bucket=$AWS_S3_BUCKET_TFSTATE" \
         -backend-config="key=$KEY_BASE-BOOTSTRAP" \
         -backend-config="region=$AWS_S3_REGION" \
@@ -173,7 +173,7 @@ elif [ "$PROVISION" = "true" ]; then
         exitf 'failed to init terraform backend for bootstrap'
     fi
 
-    terraform apply -auto-approve \
+    terraform apply -no-color -auto-approve \
         -var="tfstate_provision=$KEY_BASE-PROVISION" \
         -var="bucket_tfstate=$AWS_S3_BUCKET_TFSTATE" \
         -var="bucket_region=$AWS_S3_REGION"
@@ -198,7 +198,7 @@ elif [ "$DEPLOYMENT" = "true" ]; then
         exitf 'failed to unzip locust script'
     fi
     ARGS="deployment_args"
-    deployment_args "terraform apply -auto-approve"
+    deployment_args "terraform apply -no-color -auto-approve"
     if [ $? -ne 0 ]; then
         undo "$ARGS"
         exitf 'failed to deploy test'

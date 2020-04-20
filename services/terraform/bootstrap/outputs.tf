@@ -13,6 +13,7 @@ output "cluster" {
     ca_crt       = rke_cluster.cluster.ca_crt
     certificates = rke_cluster.cluster.certificates
   }
+  sensitive = true
 }
 
 output "nodes" {
@@ -21,10 +22,12 @@ output "nodes" {
     ssh_username     = data.terraform_remote_state.provision.outputs.ssh_username
     private_key      = data.terraform_remote_state.provision.outputs.private_key
   }
+  sensitive = true
 }
 
 output "kubeconfig" {
-  value = rke_cluster.cluster.kube_config_yaml
+  value     = rke_cluster.cluster.kube_config_yaml
+  sensitive = true
 }
 
 output "provider" {

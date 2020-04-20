@@ -11,17 +11,17 @@ spec:
   natsSvc: "nats"
   config:
     debug: true
-  #   storeDir: "/data/stan"
+    storeDir: "/data/stan"
 
-  # # Define mounts in the Pod Spec
-  # template:
-  #   spec:
-  #     volumes:
-  #     - name: stan-store-dir
-  #       persistentVolumeClaim:
-  #         claimName: stan-pvc
-  #     containers:
-  #       - name: nats-streaming
-  #         volumeMounts:
-  #         - mountPath: /data
-  #           name: stan-store-dir
+  # Define mounts in the Pod Spec
+  template:
+    spec:
+      volumes:
+      - name: stan-store-dir
+        persistentVolumeClaim:
+          claimName: stan-pvc
+      containers:
+        - name: nats-streaming
+          volumeMounts:
+          - mountPath: /data
+            name: stan-store-dir

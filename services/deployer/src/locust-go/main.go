@@ -7,24 +7,19 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 
 	"github.com/dgrijalva/jwt-go"
-)
-
-var (
-	tlsCertfileLoc = os.Getenv("TLS_CERT_FILE_LOC")
-	tlsKeyFileLoc  = os.Getenv("TLS_KEY_FILE_LOC")
+	"github.com/spf13/viper"
 )
 
 func main() {
-	if tlsCertfileLoc == "" || tlsKeyFileLoc == "" {
-		tlsCertfileLoc = "server.crt"
-		tlsKeyFileLoc = "server.key"
-	}
+	viper.AutomaticEnv()
+	viper.SetDefault("LOCUST_DOMAIN", "localhost")
+	viper.SetDefault("LOCUST_PORT", "8089")
+	viper.SetDefault("JWT_PATH", "jwt")
+
 	serverLocust := http.NewServeMux()
 	serverLocust.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-
 		if r.URL.Path == "/login" {
 			login(w, r)
 			return
@@ -39,7 +34,7 @@ func main() {
 			}
 		}
 
-		target, err := url.Parse("http://localhost:8089")
+		target, err := url.Parse("http://" + viper.GetString("LOCUST_DOMAIN") + ":" + viper.GetString("LOCUST_PORT"))
 		if err != nil {
 			fmt.Println(err.Error())
 		}
@@ -55,7 +50,7 @@ func main() {
 		proxy.ServeHTTP(w, r)
 	})
 
-	log.Fatal(http.ListenAndServeTLS(":443", tlsCertfileLoc, tlsKeyFileLoc, serverLocust))
+	log.Fatal(http.ListenAndServe(":8001", serverLocust))
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +84,6 @@ func validate(r *http.Request) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
 	ok, err := validateToken(cookie.Value)
 	if err != nil {
 		return false, err
@@ -99,7 +93,7 @@ func validate(r *http.Request) (bool, error) {
 }
 
 func validateToken(tokenString string) (bool, error) {
-	signingKey, err := ioutil.ReadFile("jwt")
+	signingKey, err := ioutil.ReadFile(viper.GetString("JWT_PATH"))
 	if err != nil {
 		return false, err
 	}
@@ -114,5 +108,6 @@ func validateToken(tokenString string) (bool, error) {
 	if token.Valid {
 		return true, err
 	}
+
 	return false, err
 }

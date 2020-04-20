@@ -1,0 +1,51 @@
+from itertools import chain
+import __main__ as main
+
+from flask import make_response
+from locust import runners, stats, web
+
+
+@web.app.route("/metrics")
+def prometheus_metrics():
+    grid_region = "${grid_region}"
+    grid_id = "${grid_id}"
+    test_id = "${test_id}"
+
+    is_distributed = isinstance(
+        runners.locust_runner, runners.MasterLocustRunner)
+    if is_distributed:
+        slave_count = runners.locust_runner.slave_count
+    else:
+        slave_count = 0
+
+    if runners.locust_runner.host:
+        host = runners.locust_runner.host
+    elif len(runners.locust_runner.locust_classes) > 0:
+        host = runners.locust_runner.locust_classes[0].host
+    else:
+        host = None
+
+    state = 1
+    if runners.locust_runner.state != "running":
+        state = 0
+
+    rows = []
+    base_metrics = f'region="{grid_region}", grid="{grid_id}", test="{test_id}"'
+    for s in stats.sort_stats(runners.locust_runner.request_stats):
+        rows.append(
+            f'locust_request_count{{{base_metrics}, endpoint="{s.name}", method="{s.method}"}} {s.num_requests}\n'
+            f'locust_request_per_second{{{base_metrics}, endpoint="{s.name}"}} {s.total_rps}\n'
+            f'locust_failed_requests{{{base_metrics}, endpoint="{s.name}", method="{s.method}"}} {s.num_failures}\n'
+            f'locust_average_response{{{base_metrics}, endpoint="{s.name}", method="{s.method}"}} {s.avg_response_time}\n'
+            f'locust_average_content_length{{{base_metrics}, endpoint="{s.name}", method="{s.method}"}} {s.avg_content_length}\n'
+            f'locust_max_response_time{{{base_metrics}, endpoint="{s.name}", method="{s.method}"}} {s.max_response_time}\n'
+            f'locust_running{{{base_metrics}, site="{host}"}} {state}\n'
+            f'locust_workers{{{base_metrics}, site="{host}"}} {slave_count}\n'
+            f'locust_users{{{base_metrics}, site="{host}"}} {runners.locust_runner.user_count}\n'
+        )
+
+    response = make_response("".join(rows))
+    response.mimetype = "text/plain; charset=utf-8'"
+    response.content_type = "text/plain; charset=utf-8'"
+    response.headers["Content-Type"] = "text/plain; charset=utf-8'"
+    return response

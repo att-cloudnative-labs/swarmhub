@@ -157,6 +157,7 @@
                     v-model="createGridData.SlaveNodes"
                     class="input"
                     type="number"
+                    min="0"
                     placeholder="Number of slaves"
                   />
                 </div>
@@ -174,6 +175,7 @@
                     v-model="createGridData.TTL"
                     class="input"
                     type="number"
+                    min="0"
                     placeholder="Time in minutes until the grid is deleted."
                   />
                 </div>
@@ -343,7 +345,12 @@
                 <div class="field-body">
                   <div class="field is-narrow">
                     <div class="control">
-                      <input class="input" type="text" v-model="selectedTemplate.SlaveNodes" />
+                      <input
+                        class="input"
+                        type="number"
+                        min="0"
+                        v-model="selectedTemplate.SlaveNodes"
+                      />
                     </div>
                   </div>
                 </div>
@@ -355,7 +362,7 @@
                 <div class="field-body">
                   <div class="field is-narrow">
                     <div class="control">
-                      <input class="input" type="text" v-model="selectedTemplate.TTL" />
+                      <input class="input" type="number" min="0" v-model="selectedTemplate.TTL" />
                     </div>
                   </div>
                 </div>
@@ -442,7 +449,7 @@ export default {
       payload = JSON.parse(JSON.stringify(this.createGridData));
       axios.post("/api/grid_template", payload).then(response => {
         this.$emit("get-grids", "latest");
-        this.$emit("get-gridTemplates", "latest");
+        this.$emit("get-grid-templates");
         if (response.status == 201) {
           this.clearGridSelection();
         }
@@ -459,20 +466,17 @@ export default {
       payload = JSON.parse(JSON.stringify(this.createGridData));
       axios
         .put("/api/grid_template/" + this.selectedTemplate.ID, payload)
-        .then(response => {
+        .then(() => {
           this.$emit("get-grids", "latest");
-          this.$emit("get-gridTemplates", "latest");
+          this.$emit("get-grid-templates");
         });
     },
     deleteGridTemplate: function() {
       axios
         .delete("/api/grid_template/" + this.selectedTemplate.ID)
-        .then(response => {
+        .then(() => {
           this.$emit("get-grids", "latest");
-          this.$emit("get-gridTemplates", "latest");
-          if (response.status == 204) {
-            this.clearGridSelection();
-          }
+          this.$emit("get-grid-templates");
         });
       this.clearGridSelection();
       this.selectExistingClicked = false;
@@ -542,7 +546,10 @@ export default {
       this.templateSelected = true;
       this.createGridData = this.selectedTemplate;
       this.getGridRegions(this.createGridData.Provider);
-      this.getGridInstances(this.createGridData.Provider, this.createGridData.Region);
+      this.getGridInstances(
+        this.createGridData.Provider,
+        this.createGridData.Region
+      );
     }
   }
 };

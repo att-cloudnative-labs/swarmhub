@@ -8,7 +8,7 @@ module.exports = {
     'eslint:recommended'
   ],
   rules: {
-    'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+    'no-console': 'off',  // There is issue building production mode with no-console eslint, use terser to strip console.log
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off'
   },
   parserOptions: {
