@@ -14,7 +14,7 @@
     "axios": "^0.18.1",
     "bulma": "^0.7.1",
     "vue": "^2.5.17",
-    "vue-moment": "^4.0.0",
+    "vue-moment": "^4.1.0",
     "vue-router": "^3.0.1",
     "vuejs-datepicker": "^1.5.4"
   },
